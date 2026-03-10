@@ -3,6 +3,8 @@ import { useDropzone } from "react-dropzone";
 import axios from "axios";
 import { toast } from "react-toastify";
 
+const BACKEND_URL = "https://amiable-expression-production.up.railway.app";
+
 const Upload = () => {
   const [file, setFile] = useState(null);
   const [description, setDescription] = useState("");
@@ -27,7 +29,7 @@ const Upload = () => {
       formData.append("file", file);
       formData.append("description", description);
       const response = await axios.post(
-        "http://localhost:5000/api/upload",
+        `${BACKEND_URL}/api/upload`,
         formData,
         { headers: { "Content-Type": "multipart/form-data" } }
       );

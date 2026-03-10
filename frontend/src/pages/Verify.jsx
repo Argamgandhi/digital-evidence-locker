@@ -3,6 +3,8 @@ import { useDropzone } from "react-dropzone";
 import axios from "axios";
 import { toast } from "react-toastify";
 
+const BACKEND_URL = "https://amiable-expression-production.up.railway.app";
+
 const Verify = () => {
   const [file, setFile] = useState(null);
   const [hashInput, setHashInput] = useState("");
@@ -27,7 +29,7 @@ const Verify = () => {
       const formData = new FormData();
       formData.append("file", file);
       const response = await axios.post(
-        "http://localhost:5000/api/verify/file",
+        `${BACKEND_URL}/api/verify/file`,
         formData,
         { headers: { "Content-Type": "multipart/form-data" } }
       );
@@ -44,7 +46,7 @@ const Verify = () => {
     setLoading(true);
     try {
       const response = await axios.post(
-        "http://localhost:5000/api/verify/hash",
+        `${BACKEND_URL}/api/verify/hash`,
         { fileHash: hashInput.trim() }
       );
       setResult(response.data);
@@ -164,16 +166,12 @@ const Verify = () => {
         </div>
 
         {result && (
-          <div
-            className={`glass rounded-2xl p-6 fade-in-up border ${
-              result.isValid ? "border-green-500/30" : "border-red-500/30"
-            }`}
-          >
-            <h3
-              className={`font-bold text-xl mb-4 ${
-                result.isValid ? "text-green-400" : "text-red-400"
-              }`}
-            >
+          <div className={`glass rounded-2xl p-6 fade-in-up border ${
+            result.isValid ? "border-green-500/30" : "border-red-500/30"
+          }`}>
+            <h3 className={`font-bold text-xl mb-4 ${
+              result.isValid ? "text-green-400" : "text-red-400"
+            }`}>
               {result.message}
             </h3>
 
@@ -201,8 +199,7 @@ const Verify = () => {
                   This file was never uploaded or has been modified after upload.
                 </p>
                 <p className="text-slate-400 text-xs mt-2">
-                  Hash checked:{" "}
-                  <span className="font-mono text-red-400">{result.data?.fileHash}</span>
+                  Hash checked: <span className="font-mono text-red-400">{result.data?.fileHash}</span>
                 </p>
               </div>
             )}

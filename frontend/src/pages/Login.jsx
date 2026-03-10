@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import axios from "axios";
 
+const BACKEND_URL = "https://amiable-expression-production.up.railway.app";
+
 const Login = () => {
   const navigate = useNavigate();
   const [form, setForm] = useState({ email: "", password: "" });
@@ -30,7 +32,7 @@ const Login = () => {
     }
     setLoading(true);
     try {
-      const response = await axios.post("http://localhost:5000/api/auth/login", {
+      const response = await axios.post(`${BACKEND_URL}/api/auth/login`, {
         email: form.email,
         password: form.password,
       });
@@ -142,7 +144,7 @@ const Login = () => {
           onClick={() => navigate("/usertype")}
           className="text-center text-slate-500 text-sm mt-6 cursor-pointer hover:text-slate-400 transition-colors"
         >
-          ← Back
+          Back
         </p>
       </div>
     </div>

@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import axios from "axios";
 
+const BACKEND_URL = "https://amiable-expression-production.up.railway.app";
+
 const Register = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
@@ -49,7 +51,7 @@ const Register = () => {
     setLoading(true);
     try {
       const response = await axios.post(
-        "http://localhost:5000/api/auth/register",
+        `${BACKEND_URL}/api/auth/register`,
         {
           firstName: form.firstName,
           lastName: form.lastName,
@@ -190,7 +192,7 @@ const Register = () => {
                 type="submit"
                 className="w-full py-4 rounded-xl font-bold text-white text-lg bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 transition-all duration-200 glow-border"
               >
-                Next →
+                Next
               </button>
             </form>
           )}

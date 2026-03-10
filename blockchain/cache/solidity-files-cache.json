@@ -1,0 +1,41 @@
+{
+  "_format": "hh-sol-cache-2",
+  "files": {
+    "C:\\Users\\krupa\\Desktop\\digital-evidence-locker\\blockchain\\contracts\\EvidenceLocker.sol": {
+      "lastModificationDate": 1772390700215,
+      "contentHash": "42413c92bb57c509a7119ec36da489b6",
+      "sourceName": "contracts/EvidenceLocker.sol",
+      "solcConfig": {
+        "version": "0.8.20",
+        "settings": {
+          "evmVersion": "paris",
+          "optimizer": {
+            "enabled": false,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ],
+              "": [
+                "ast"
+              ]
+            }
+          }
+        }
+      },
+      "imports": [],
+      "versionPragmas": [
+        "^0.8.20"
+      ],
+      "artifacts": [
+        "EvidenceLocker"
+      ]
+    }
+  }
+}

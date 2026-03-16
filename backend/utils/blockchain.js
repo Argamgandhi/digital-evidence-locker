@@ -1,8 +1,4 @@
 const { ethers } = require('ethers');
-const fs = require('fs');
-const path = require('path');
-
-// Load ABI and contract address
 const contractABI = require('../EvidenceLocker.json');
 const contractAddress = require('../contractAddress.json');
 
@@ -17,22 +13,30 @@ const getContract = () => {
   return contract;
 };
 
+// Matches ABI: storeEvidence(fileName, fileHash, ipfsCID, description)
 const registerEvidence = async (fileHash, ipfsCID, fileName, description) => {
   try {
     const contract = getContract();
-    const tx = await contract.registerEvidence(fileHash, ipfsCID, fileName, description);
+    const tx = await contract.storeEvidence(
+      fileName,    // _fileName  (first param in ABI)
+      fileHash,    // _fileHash  (second param in ABI)
+      ipfsCID,     // _ipfsCID   (third param in ABI)
+      description  // _description (fourth param in ABI)
+    );
     const receipt = await tx.wait();
     return receipt.hash;
   } catch (error) {
-    console.error('registerEvidence error:', error);
+    console.error('storeEvidence error:', error);
     throw error;
   }
 };
 
+// Matches ABI: verifyEvidence(_fileHash) returns bool
 const verifyEvidence = async (fileHash) => {
   try {
     const contract = getContract();
-    const exists = await contract.verifyEvidence(fileHash);
+    // verifyEvidence is nonpayable (not view) in the ABI - need to call statically
+    const exists = await contract.verifyEvidence.staticCall(fileHash);
     return exists;
   } catch (error) {
     console.error('verifyEvidence error:', error);
@@ -40,16 +44,17 @@ const verifyEvidence = async (fileHash) => {
   }
 };
 
+// Matches ABI: getEvidence(_fileHash) returns (fileName, ipfsCID, uploadedBy, timestamp, description)
 const getEvidence = async (fileHash) => {
   try {
     const contract = getContract();
-    const evidence = await contract.getEvidence(fileHash);
+    const result = await contract.getEvidence(fileHash);
     return {
-      ipfsCID:     evidence[0],
-      fileName:    evidence[1],
-      description: evidence[2],
-      uploadedBy:  evidence[3],
-      timestamp:   evidence[4],
+      fileName:    result[0],  // index 0 = fileName
+      ipfsCID:     result[1],  // index 1 = ipfsCID
+      uploadedBy:  result[2],  // index 2 = uploadedBy (address)
+      timestamp:   result[3],  // index 3 = timestamp
+      description: result[4],  // index 4 = description
     };
   } catch (error) {
     console.error('getEvidence error:', error);

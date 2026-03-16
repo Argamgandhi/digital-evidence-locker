@@ -1,180 +1,242 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import { toast } from "react-toastify";
 
-const userTypeLabels = {
-  organization: {
-    label: "Organisation",
-    icon: "🏛️",
-    color: "text-blue-400",
-    bg: "bg-blue-500/10 border-blue-500/30",
-    desc: "Access for government bodies, legal firms and law enforcement agencies.",
-  },
-  professional: {
-    label: "Professional",
-    icon: "💼",
-    color: "text-indigo-400",
-    bg: "bg-indigo-500/10 border-indigo-500/30",
-    desc: "Access for lawyers, investigators, forensic experts and researchers.",
-  },
-  personal: {
-    label: "Personal",
-    icon: "👤",
-    color: "text-purple-400",
-    bg: "bg-purple-500/10 border-purple-500/30",
-    desc: "Access for individuals securing personal documents and files.",
-  },
-};
+const BACKEND_URL = "https://amiable-expression-production.up.railway.app";
 
 const Profile = () => {
   const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem("user") || "{}");
-  const userType = localStorage.getItem("userType") || "personal";
-  const current = userTypeLabels[userType] || userTypeLabels.personal;
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const user = JSON.parse(localStorage.getItem("user") || "null");
+  const token = localStorage.getItem("token");
+
+  const [uploads, setUploads] = useState([]);
+  const [allUploads, setAllUploads] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [tab, setTab] = useState("my"); // "my" | "all"
+
+  const isVerificationAuthority = user?.userType === "verification_authority";
+
+  const userTypeLabel = {
+    personal:               { label: "Personal",               icon: "👤", color: "text-purple-400" },
+    professional:           { label: "Professional",           icon: "💼", color: "text-indigo-400" },
+    organization:           { label: "Organisation",           icon: "🏛️", color: "text-blue-400"   },
+    verification_authority: { label: "Verification Authority", icon: "🔏", color: "text-rose-400"   },
+  };
+
+  const typeInfo = userTypeLabel[user?.userType] || userTypeLabel.personal;
+
+  useEffect(() => {
+    if (!user || !token) { navigate("/login"); return; }
+    fetchMyUploads();
+    if (isVerificationAuthority) fetchAllUploads();
+  }, []);
+
+  const fetchMyUploads = async () => {
+    try {
+      const res = await axios.get(`${BACKEND_URL}/api/upload/my-uploads`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.data.success) setUploads(res.data.uploads);
+    } catch {
+      toast.error("Failed to load your uploads");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchAllUploads = async () => {
+    try {
+      const res = await axios.get(`${BACKEND_URL}/api/upload/all`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.data.success) setAllUploads(res.data.uploads);
+    } catch {}
+  };
+
+  const handleDownload = (fileHash) => {
+    window.open(`${BACKEND_URL}/api/verify/download/${fileHash}`, "_blank");
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
-    localStorage.removeItem("userType");
-    toast.success("Logged out successfully!");
-    navigate("/usertype");
+    navigate("/");
   };
 
-  const getInitials = () => {
-    const first = user.firstName?.[0] || "";
-    const last = user.lastName?.[0] || "";
-    return (first + last).toUpperCase() || "U";
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    toast.success("Copied to clipboard!");
   };
 
-  const infoItems = [
-    { label: "First Name", value: user.firstName, icon: "👤" },
-    { label: "Last Name", value: user.lastName, icon: "👤" },
-    { label: "Email Address", value: user.email, icon: "📧" },
-    { label: "Phone Number", value: user.phone || "Not provided", icon: "📱" },
-    { label: "Date of Birth", value: user.dob || "Not provided", icon: "🎂" },
-    { label: "Organisation", value: user.organisation || "Not provided", icon: "🏢" },
-  ];
+  const displayList = tab === "my" ? uploads : allUploads;
 
   return (
     <div className="min-h-screen py-12 px-6">
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 right-20 w-72 h-72 bg-indigo-600/10 rounded-full blur-3xl"></div>
-        <div className="absolute bottom-20 left-20 w-72 h-72 bg-purple-600/10 rounded-full blur-3xl"></div>
-      </div>
+      <div className="max-w-5xl mx-auto">
 
-      <div className="max-w-2xl mx-auto relative z-10">
-
-        {/* Header */}
-        <div className="text-center mb-8 fade-in-up">
-          <div className="w-24 h-24 mx-auto rounded-3xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-4xl font-bold text-white mb-4 pulse-glow">
-            {getInitials()}
-          </div>
-          <h1 className="text-3xl font-extrabold text-white">
-            {user.firstName} {user.lastName}
-          </h1>
-          <p className="text-slate-400 mt-1">{user.email}</p>
-          <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full border mt-3 ${current.bg}`}>
-            <span>{current.icon}</span>
-            <span className={`text-sm font-semibold ${current.color}`}>
-              {current.label} Account
-            </span>
-          </div>
-        </div>
-
-        {/* Stats Row */}
-        <div className="grid grid-cols-3 gap-4 mb-6 fade-in-up">
-          {[
-            { icon: "⛓️", label: "Blockchain", value: "Active" },
-            { icon: "🔐", label: "Security", value: "SHA-256" },
-            { icon: "✅", label: "Status", value: "Verified" },
-          ].map((stat, i) => (
-            <div key={i} className="glass rounded-2xl p-4 text-center card-hover">
-              <div className="text-2xl mb-1">{stat.icon}</div>
-              <p className="text-indigo-400 font-bold text-sm">{stat.value}</p>
-              <p className="text-slate-500 text-xs">{stat.label}</p>
+        {/* Profile Header */}
+        <div className="glass rounded-2xl p-6 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-3xl">
+              {typeInfo.icon}
             </div>
-          ))}
+            <div>
+              <h1 className="text-2xl font-bold text-white">
+                {user?.firstName} {user?.lastName}
+              </h1>
+              <p className="text-slate-400 text-sm">{user?.email}</p>
+              <span className={`text-sm font-semibold ${typeInfo.color}`}>
+                {typeInfo.label}
+                {user?.organisation ? ` • ${user.organisation}` : ""}
+              </span>
+            </div>
+          </div>
+          <div className="flex gap-3">
+            <button
+              onClick={() => navigate("/upload")}
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold transition-colors"
+            >
+              + Upload New
+            </button>
+            <button
+              onClick={handleLogout}
+              className="px-4 py-2 glass hover:bg-red-600/20 text-slate-300 hover:text-red-400 rounded-xl text-sm font-semibold transition-colors"
+            >
+              Logout
+            </button>
+          </div>
         </div>
 
-        {/* Profile Info Card */}
-        <div className="glass rounded-2xl p-6 mb-6 fade-in-up">
-          <h2 className="text-white font-bold text-lg mb-5 flex items-center gap-2">
-            <span>📋</span> Profile Information
+        {/* Hash Access Info */}
+        <div className="glass rounded-2xl p-5 mb-6 border border-indigo-500/20">
+          <h3 className="text-white font-bold mb-2">🔑 How to Share or Access a File</h3>
+          <p className="text-slate-400 text-sm">
+            Copy the <span className="text-indigo-400 font-semibold">File Hash</span> from any upload below and share it with anyone. They can go to the{" "}
+            <span
+              onClick={() => navigate("/verify")}
+              className="text-indigo-400 cursor-pointer hover:underline"
+            >
+              Verify page
+            </span>{" "}
+            → paste the hash → verify authenticity and download the original file.
+          </p>
+        </div>
+
+        {/* Tabs for Verification Authority */}
+        {isVerificationAuthority && (
+          <div className="glass rounded-xl p-1 flex gap-1 mb-6 w-fit">
+            <button
+              onClick={() => setTab("my")}
+              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+                tab === "my" ? "bg-indigo-600 text-white" : "text-slate-400 hover:text-white"
+              }`}
+            >
+              My Uploads ({uploads.length})
+            </button>
+            <button
+              onClick={() => setTab("all")}
+              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
+                tab === "all" ? "bg-rose-600 text-white" : "text-slate-400 hover:text-white"
+              }`}
+            >
+              All Uploads — Authority View ({allUploads.length})
+            </button>
+          </div>
+        )}
+
+        {/* Uploads List */}
+        <div className="glass rounded-2xl p-6">
+          <h2 className="text-white font-bold text-lg mb-5">
+            {tab === "all" ? "🔏 All Platform Uploads" : "📁 My Uploaded Evidence"}
           </h2>
-          <div className="space-y-4">
-            {infoItems.map((item, i) => (
-              <div
-                key={i}
-                className="flex items-center justify-between py-3 border-b border-slate-700/50 last:border-0"
+
+          {loading ? (
+            <div className="text-center py-12 text-slate-400">Loading...</div>
+          ) : displayList.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="text-5xl mb-4">📭</div>
+              <p className="text-slate-400">No uploads yet.</p>
+              <button
+                onClick={() => navigate("/upload")}
+                className="mt-4 px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl font-semibold transition-colors"
               >
-                <div className="flex items-center gap-3">
-                  <span className="text-lg">{item.icon}</span>
-                  <span className="text-slate-400 text-sm">{item.label}</span>
+                Upload Your First File
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {displayList.map((upload, i) => (
+                <div key={i} className="bg-slate-800/50 rounded-xl p-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <div className="w-10 h-10 rounded-lg bg-indigo-600/20 flex items-center justify-center text-xl flex-shrink-0">
+                        📄
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-white font-semibold truncate">{upload.fileName}</p>
+                        {upload.description && (
+                          <p className="text-slate-400 text-xs truncate">{upload.description}</p>
+                        )}
+                        {tab === "all" && upload.User && (
+                          <p className="text-rose-400 text-xs">
+                            By: {upload.User.firstName} {upload.User.lastName} ({upload.User.email})
+                          </p>
+                        )}
+                        <p className="text-slate-500 text-xs">
+                          {upload.fileSize} • {new Date(upload.uploadedAt).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2 flex-shrink-0">
+                      <button
+                        onClick={() => copyToClipboard(upload.fileHash)}
+                        className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-semibold transition-colors"
+                        title="Copy hash"
+                      >
+                        📋 Copy Hash
+                      </button>
+                      <button
+                        onClick={() => handleDownload(upload.fileHash)}
+                        className="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-xs font-semibold transition-colors"
+                      >
+                        ⬇️ Download
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Hash display */}
+                  <div className="mt-3 bg-slate-900/60 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
+                    <span className="text-slate-400 text-xs font-mono truncate">{upload.fileHash}</span>
+                    <button
+                      onClick={() => copyToClipboard(upload.fileHash)}
+                      className="text-indigo-400 hover:text-indigo-300 text-xs flex-shrink-0"
+                    >
+                      Copy
+                    </button>
+                  </div>
+
+                  {upload.txHash && (
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="text-slate-500 text-xs">Tx:</span>
+                      <a
+                        href={`https://sepolia.etherscan.io/tx/${upload.txHash}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-indigo-400 hover:text-indigo-300 text-xs font-mono truncate"
+                      >
+                        {upload.txHash?.slice(0, 32)}...
+                      </a>
+                    </div>
+                  )}
                 </div>
-                <span className="text-white text-sm font-medium">
-                  {item.value || "Not provided"}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Account Type Card */}
-        <div className={`glass rounded-2xl p-6 mb-6 border ${current.bg} fade-in-up`}>
-          <h2 className="text-white font-bold text-lg mb-3 flex items-center gap-2">
-            <span>{current.icon}</span> Account Type
-          </h2>
-          <p className={`font-semibold text-lg ${current.color}`}>{current.label}</p>
-          <p className="text-slate-400 text-sm mt-1">{current.desc}</p>
-        </div>
-
-        {/* Actions */}
-        <div className="space-y-3 fade-in-up">
-          <button
-            onClick={() => navigate("/")}
-            className="w-full py-4 rounded-xl font-semibold text-white bg-indigo-600 hover:bg-indigo-500 transition-all duration-200 glow-border"
-          >
-            🏠 Go to Dashboard
-          </button>
-          <button
-            onClick={() => setShowLogoutConfirm(true)}
-            className="w-full py-4 rounded-xl font-semibold text-red-400 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 transition-all duration-200"
-          >
-            🚪 Logout
-          </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Logout Confirmation Modal */}
-      {showLogoutConfirm && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 px-6">
-          <div className="glass rounded-2xl p-8 max-w-sm w-full text-center fade-in-up">
-            <div className="text-5xl mb-4">🚪</div>
-            <h3 className="text-white font-bold text-xl mb-2">Logout?</h3>
-            <p className="text-slate-400 text-sm mb-6">
-              Are you sure you want to logout from EvidenceLocker?
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowLogoutConfirm(false)}
-                className="flex-1 py-3 rounded-xl font-semibold text-white bg-slate-700 hover:bg-slate-600 transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleLogout}
-                className="flex-1 py-3 rounded-xl font-semibold text-white bg-red-600 hover:bg-red-500 transition-all"
-              >
-                Logout
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
 
 export default Profile;
-

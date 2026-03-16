@@ -1,129 +1,169 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
-const features = [
-  { icon: "🔒", title: "Tamper-Proof Storage", desc: "Files are hashed with SHA-256 and stored on the blockchain — any modification is instantly detected." },
-  { icon: "⛓️", title: "Blockchain Immutability", desc: "Once recorded, evidence cannot be altered or deleted, ensuring a permanent audit trail." },
-  { icon: "🌐", title: "Distributed Storage", desc: "Files are stored on IPFS — a decentralized network with no single point of failure." },
-  { icon: "⏱️", title: "Timestamped Records", desc: "Every piece of evidence gets a blockchain timestamp proving exactly when it was submitted." },
-  { icon: "🔍", title: "Instant Verification", desc: "Verify any file's authenticity in seconds by comparing its hash against the blockchain." },
-  { icon: "📋", title: "Chain of Custody", desc: "Full audit trail of who uploaded what and when, powered by smart contracts." },
-];
+const BACKEND_URL = "https://amiable-expression-production.up.railway.app";
 
 const Home = () => {
+  const navigate = useNavigate();
+  const user = JSON.parse(localStorage.getItem("user") || "null");
+  const [stats, setStats] = useState({ totalUploads: 0, totalUsers: 0, recentUploads: [] });
+  const [loadingStats, setLoadingStats] = useState(true);
+
+  useEffect(() => {
+    axios.get(`${BACKEND_URL}/api/upload/stats`)
+      .then((res) => { if (res.data.success) setStats(res.data); })
+      .catch(() => {})
+      .finally(() => setLoadingStats(false));
+  }, []);
+
   return (
     <div className="min-h-screen">
-      {/* Hero Section */}
+      {/* Hero */}
       <div className="relative overflow-hidden">
-        {/* Background Effects */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute -top-40 -right-40 w-96 h-96 bg-indigo-600/20 rounded-full blur-3xl"></div>
-          <div className="absolute -bottom-40 -left-40 w-96 h-96 bg-purple-600/20 rounded-full blur-3xl"></div>
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-indigo-900/10 rounded-full blur-3xl"></div>
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-20 left-20 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-0 right-20 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl"></div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-6 py-24 text-center relative z-10">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass text-indigo-400 text-sm font-medium mb-8 fade-in-up">
-            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
-            Blockchain Network Active
+        <div className="max-w-5xl mx-auto px-6 pt-20 pb-16 text-center relative z-10">
+          <div className="inline-flex items-center gap-2 bg-indigo-600/20 border border-indigo-500/30 rounded-full px-4 py-2 mb-6">
+            <span className="text-indigo-400 text-sm font-medium">⛓️ Powered by Ethereum Blockchain</span>
           </div>
-
-          {/* Main Heading */}
-          <h1 className="text-5xl md:text-7xl font-extrabold text-white mb-6 fade-in-up glow-text leading-tight">
-            Secure Digital
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400"> Evidence</span>
-            <br />on the Blockchain
+          <h1 className="text-5xl font-extrabold text-white mb-4 leading-tight">
+            Secure Your Evidence<br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">
+              Forever on Blockchain
+            </span>
           </h1>
-
-          <p className="text-slate-400 text-lg md:text-xl max-w-2xl mx-auto mb-12 fade-in-up">
-            Store, protect, and verify digital evidence with cryptographic certainty.
-            Powered by Ethereum smart contracts and IPFS distributed storage.
+          <p className="text-slate-400 text-lg mb-8 max-w-2xl mx-auto">
+            Upload digital evidence. Get an immutable blockchain record. Verify authenticity anytime — tamper-proof, transparent, and permanent.
           </p>
-
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row gap-4 justify-center fade-in-up">
-            <Link
-              to="/upload"
-              className="px-8 py-4 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl transition-all duration-200 glow-border pulse-glow text-lg"
+          <div className="flex gap-4 justify-center flex-wrap">
+            <button
+              onClick={() => navigate(user ? "/upload" : "/usertype")}
+              className="px-8 py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold rounded-xl text-lg transition-all duration-200 glow-border"
             >
-              📤 Upload Evidence
-            </Link>
-            <Link
-              to="/verify"
-              className="px-8 py-4 glass hover:bg-white/10 text-white font-semibold rounded-xl transition-all duration-200 text-lg"
+              Upload Evidence
+            </button>
+            <button
+              onClick={() => navigate("/verify")}
+              className="px-8 py-4 glass hover:bg-white/10 text-white font-bold rounded-xl text-lg transition-all duration-200"
             >
-              🔍 Verify Evidence
-            </Link>
-          </div>
-
-          {/* Floating Lock Icon */}
-          <div className="mt-16 float-animation">
-            <div className="w-24 h-24 mx-auto rounded-3xl bg-gradient-to-br from-indigo-600 to-purple-600 flex items-center justify-center text-5xl shadow-2xl glow-border">
-              🔐
-            </div>
+              Verify Evidence
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="max-w-7xl mx-auto px-6 py-12">
-        <div className="grid grid-cols-3 gap-6">
-          {[
-            { value: "SHA-256", label: "Encryption" },
-            { value: "100%", label: "Tamper-Proof" },
-            { value: "IPFS", label: "Distributed" },
-          ].map((stat, i) => (
-            <div key={i} className="glass rounded-2xl p-6 text-center card-hover">
-              <p className="text-3xl font-bold text-indigo-400">{stat.value}</p>
-              <p className="text-slate-400 text-sm mt-1">{stat.label}</p>
-            </div>
-          ))}
+      {/* Blockchain Stats Dashboard */}
+      <div className="max-w-5xl mx-auto px-6 pb-10">
+        <div className="text-center mb-6">
+          <h2 className="text-2xl font-bold text-white mb-1">🔗 Live Blockchain Statistics</h2>
+          <p className="text-slate-400 text-sm">Real-time data from our deployed smart contract on Sepolia</p>
         </div>
-      </div>
 
-      {/* Features */}
-      <div className="max-w-7xl mx-auto px-6 py-16">
-        <h2 className="text-3xl font-bold text-white text-center mb-4">Why EvidenceLocker?</h2>
-        <p className="text-slate-400 text-center mb-12">Built on cutting-edge blockchain technology for maximum security</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {features.map((f, i) => (
-            <div key={i} className="glass rounded-2xl p-6 card-hover">
-              <div className="w-12 h-12 rounded-xl bg-indigo-600/20 flex items-center justify-center text-2xl mb-4">
-                {f.icon}
-              </div>
-              <h3 className="text-white font-semibold text-lg mb-2">{f.title}</h3>
-              <p className="text-slate-400 text-sm leading-relaxed">{f.desc}</p>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+          {/* Total Uploads */}
+          <div className="glass rounded-2xl p-6 text-center">
+            <div className="text-5xl font-extrabold text-indigo-400 mb-2">
+              {loadingStats ? "..." : stats.totalUploads}
             </div>
-          ))}
+            <div className="text-white font-semibold">Total Evidence Uploaded</div>
+            <div className="text-slate-400 text-sm mt-1">Recorded on blockchain</div>
+          </div>
+
+          {/* Total Users */}
+          <div className="glass rounded-2xl p-6 text-center">
+            <div className="text-5xl font-extrabold text-purple-400 mb-2">
+              {loadingStats ? "..." : stats.totalUsers}
+            </div>
+            <div className="text-white font-semibold">Registered Members</div>
+            <div className="text-slate-400 text-sm mt-1">Active on the platform</div>
+          </div>
+
+          {/* Contract Info */}
+          <div className="glass rounded-2xl p-6 text-center">
+            <div className="text-3xl font-extrabold text-rose-400 mb-2">Sepolia</div>
+            <div className="text-white font-semibold">Network</div>
+            <div className="text-slate-400 text-xs mt-1 font-mono break-all">0x7Be61E...2e492</div>
+          </div>
         </div>
+
+        {/* Recent uploads on blockchain */}
+        {stats.recentUploads && stats.recentUploads.length > 0 && (
+          <div className="glass rounded-2xl p-6">
+            <h3 className="text-white font-bold text-lg mb-4">🕐 Recent Blockchain Transactions</h3>
+            <div className="space-y-3">
+              {stats.recentUploads.map((u, i) => (
+                <div key={i} className="flex items-center justify-between bg-slate-800/50 rounded-xl px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-600/30 flex items-center justify-center text-indigo-400 text-sm">
+                      📄
+                    </div>
+                    <div>
+                      <div className="text-white text-sm font-medium">{u.fileName}</div>
+                      <div className="text-slate-400 text-xs font-mono">{u.fileHash?.slice(0, 24)}...</div>
+                    </div>
+                  </div>
+                  <div className="text-slate-400 text-xs text-right">
+                    {new Date(u.uploadedAt).toLocaleDateString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* How it works */}
-      <div className="max-w-7xl mx-auto px-6 py-16">
-        <h2 className="text-3xl font-bold text-white text-center mb-12">How It Works</h2>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+      <div className="max-w-5xl mx-auto px-6 pb-16">
+        <h2 className="text-2xl font-bold text-white text-center mb-8">How It Works</h2>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
           {[
-            { step: "01", icon: "📁", title: "Upload File", desc: "Select your evidence file to upload" },
-            { step: "02", icon: "🔑", title: "Hash Generated", desc: "SHA-256 hash is computed from file" },
-            { step: "03", icon: "🌐", title: "IPFS Storage", desc: "File stored on decentralized network" },
-            { step: "04", icon: "⛓️", title: "Blockchain Record", desc: "Hash permanently stored on chain" },
-          ].map((item, i) => (
-            <div key={i} className="glass rounded-2xl p-6 text-center card-hover relative">
-              <div className="text-indigo-400 font-bold text-sm mb-3">{item.step}</div>
-              <div className="text-4xl mb-3">{item.icon}</div>
-              <h3 className="text-white font-semibold mb-2">{item.title}</h3>
-              <p className="text-slate-400 text-sm">{item.desc}</p>
+            { icon: "📤", title: "Upload", desc: "Upload any file. We compute its SHA-256 hash and store it on the Ethereum blockchain permanently." },
+            { icon: "🔍", title: "Verify", desc: "Enter the file hash or re-upload the file. We check the blockchain and confirm if it's authentic." },
+            { icon: "⬇️", title: "Download", desc: "Use the file hash to retrieve and download the original file directly from IPFS at any time." },
+          ].map((step, i) => (
+            <div key={i} className="glass rounded-2xl p-6 text-center">
+              <div className="text-4xl mb-3">{step.icon}</div>
+              <h3 className="text-white font-bold text-lg mb-2">{step.title}</h3>
+              <p className="text-slate-400 text-sm">{step.desc}</p>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Footer */}
-      <footer className="glass mt-16 px-6 py-8 text-center text-slate-400 text-sm">
-        <p>🔐 Blockchain-Based Digital Evidence Locker | Built with Ethereum + IPFS + React</p>
-        <p className="mt-1 text-xs">Group IBC12 — Secure. Immutable. Transparent.</p>
-      </footer>
+      {/* How to access file by hash - info box */}
+      <div className="max-w-5xl mx-auto px-6 pb-16">
+        <div className="glass rounded-2xl p-6 border border-indigo-500/20">
+          <h3 className="text-white font-bold text-lg mb-3">🔑 How to Access a File Using Hash</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div>
+              <p className="text-slate-300 text-sm mb-3">Every uploaded file gets a unique <span className="text-indigo-400 font-semibold">SHA-256 hash</span> — a 64-character fingerprint. You can use this hash to:</p>
+              <ul className="space-y-2 text-sm text-slate-300">
+                <li className="flex gap-2"><span className="text-green-400">✓</span> Verify a file is authentic and untampered</li>
+                <li className="flex gap-2"><span className="text-green-400">✓</span> Download the original file from IPFS</li>
+                <li className="flex gap-2"><span className="text-green-400">✓</span> View upload metadata (who, when, description)</li>
+                <li className="flex gap-2"><span className="text-green-400">✓</span> Share with Verification Authorities as proof</li>
+              </ul>
+            </div>
+            <div className="bg-slate-900/60 rounded-xl p-4">
+              <p className="text-slate-400 text-xs mb-2 font-semibold">EXAMPLE HASH</p>
+              <p className="text-indigo-300 font-mono text-xs break-all mb-3">
+                a3f9b2cc1d4e5f67890abc123def456789abcdef01234567890abcdef12345678
+              </p>
+              <p className="text-slate-400 text-xs mb-3">Go to <span className="text-white font-semibold">Verify</span> page → paste hash → click Verify Hash → download file</p>
+              <button
+                onClick={() => navigate("/verify")}
+                className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg text-sm font-semibold transition-colors"
+              >
+                Try Verifying Now →
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };

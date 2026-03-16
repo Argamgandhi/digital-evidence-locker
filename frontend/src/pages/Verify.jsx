@@ -17,10 +17,7 @@ const Verify = () => {
     setResult(null);
   }, []);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    onDrop,
-    multiple: false,
-  });
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, multiple: false });
 
   const handleVerifyFile = async () => {
     if (!file) return toast.error("Please select a file!");
@@ -28,11 +25,9 @@ const Verify = () => {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      const response = await axios.post(
-        `${BACKEND_URL}/api/verify/file`,
-        formData,
-        { headers: { "Content-Type": "multipart/form-data" } }
-      );
+      const response = await axios.post(`${BACKEND_URL}/api/verify/file`, formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
       setResult(response.data);
     } catch (error) {
       toast.error(error.response?.data?.error || "Verification failed!");
@@ -45,16 +40,23 @@ const Verify = () => {
     if (!hashInput.trim()) return toast.error("Please enter a hash!");
     setLoading(true);
     try {
-      const response = await axios.post(
-        `${BACKEND_URL}/api/verify/hash`,
-        { fileHash: hashInput.trim() }
-      );
+      const response = await axios.post(`${BACKEND_URL}/api/verify/hash`, { fileHash: hashInput.trim() });
       setResult(response.data);
     } catch (error) {
       toast.error(error.response?.data?.error || "Verification failed!");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleDownload = () => {
+    if (!result?.data?.fileHash) return;
+    window.open(`${BACKEND_URL}/api/verify/download/${result.data.fileHash}`, "_blank");
+  };
+
+  const copyHash = () => {
+    navigator.clipboard.writeText(result.data.fileHash);
+    toast.success("Hash copied!");
   };
 
   return (
@@ -66,20 +68,17 @@ const Verify = () => {
 
       <div className="max-w-2xl mx-auto relative z-10">
         <div className="text-center mb-10">
-          <div className="w-16 h-16 mx-auto rounded-2xl bg-purple-600/20 flex items-center justify-center text-4xl mb-4">
-            🔍
-          </div>
+          <div className="w-16 h-16 mx-auto rounded-2xl bg-purple-600/20 flex items-center justify-center text-4xl mb-4">🔍</div>
           <h1 className="text-4xl font-bold text-white mb-2">Verify Evidence</h1>
-          <p className="text-slate-400">Check if a file is authentic and untampered</p>
+          <p className="text-slate-400">Check if a file is authentic and download it using its hash</p>
         </div>
 
+        {/* Tab toggle */}
         <div className="glass rounded-2xl p-2 flex gap-2 mb-6">
           <button
             onClick={() => { setMode("file"); setResult(null); }}
             className={`flex-1 py-3 rounded-xl font-medium transition-all duration-200 ${
-              mode === "file"
-                ? "bg-indigo-600 text-white"
-                : "text-slate-400 hover:text-white"
+              mode === "file" ? "bg-indigo-600 text-white" : "text-slate-400 hover:text-white"
             }`}
           >
             Verify by File
@@ -87,9 +86,7 @@ const Verify = () => {
           <button
             onClick={() => { setMode("hash"); setResult(null); }}
             className={`flex-1 py-3 rounded-xl font-medium transition-all duration-200 ${
-              mode === "hash"
-                ? "bg-indigo-600 text-white"
-                : "text-slate-400 hover:text-white"
+              mode === "hash" ? "bg-indigo-600 text-white" : "text-slate-400 hover:text-white"
             }`}
           >
             Verify by Hash
@@ -102,9 +99,7 @@ const Verify = () => {
               <div
                 {...getRootProps()}
                 className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all duration-200 ${
-                  isDragActive
-                    ? "border-purple-400 bg-purple-600/10"
-                    : "border-slate-600 hover:border-purple-500 hover:bg-purple-600/5"
+                  isDragActive ? "border-purple-400 bg-purple-600/10" : "border-slate-600 hover:border-purple-500 hover:bg-purple-600/5"
                 }`}
               >
                 <input {...getInputProps()} />
@@ -112,16 +107,12 @@ const Verify = () => {
                 {file ? (
                   <div>
                     <p className="text-white font-semibold text-lg">{file.name}</p>
-                    <p className="text-slate-400 text-sm mt-1">
-                      {(file.size / 1024).toFixed(2)} KB
-                    </p>
+                    <p className="text-slate-400 text-sm mt-1">{(file.size / 1024).toFixed(2)} KB</p>
                     <p className="text-green-400 text-sm mt-2">File selected!</p>
                   </div>
                 ) : (
                   <div>
-                    <p className="text-white font-medium text-lg">
-                      {isDragActive ? "Drop it here!" : "Drop the file to verify"}
-                    </p>
+                    <p className="text-white font-medium text-lg">{isDragActive ? "Drop it here!" : "Drop the file to verify"}</p>
                     <p className="text-slate-400 text-sm mt-2">or click to browse</p>
                   </div>
                 )}
@@ -130,9 +121,7 @@ const Verify = () => {
                 onClick={handleVerifyFile}
                 disabled={loading || !file}
                 className={`w-full mt-6 py-4 rounded-xl font-semibold text-white text-lg transition-all duration-200 ${
-                  loading || !file
-                    ? "bg-slate-700 cursor-not-allowed opacity-50"
-                    : "bg-purple-600 hover:bg-purple-500 glow-border"
+                  loading || !file ? "bg-slate-700 cursor-not-allowed opacity-50" : "bg-purple-600 hover:bg-purple-500 glow-border"
                 }`}
               >
                 {loading ? "Verifying..." : "Verify File"}
@@ -140,23 +129,22 @@ const Verify = () => {
             </div>
           ) : (
             <div>
-              <label className="block text-slate-300 text-sm font-medium mb-2">
-                Enter SHA-256 Hash
-              </label>
+              <label className="block text-slate-300 text-sm font-medium mb-2">Enter SHA-256 Hash</label>
               <input
                 type="text"
                 value={hashInput}
                 onChange={(e) => setHashInput(e.target.value)}
-                placeholder="Enter file hash here..."
+                placeholder="Paste the 64-character file hash here..."
                 className="w-full bg-slate-800/50 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 transition-colors font-mono text-sm"
               />
+              <p className="text-slate-500 text-xs mt-2">
+                You can find the hash in your personal dashboard or from the person who uploaded the file.
+              </p>
               <button
                 onClick={handleVerifyHash}
                 disabled={loading || !hashInput.trim()}
                 className={`w-full mt-6 py-4 rounded-xl font-semibold text-white text-lg transition-all duration-200 ${
-                  loading || !hashInput.trim()
-                    ? "bg-slate-700 cursor-not-allowed opacity-50"
-                    : "bg-purple-600 hover:bg-purple-500 glow-border"
+                  loading || !hashInput.trim() ? "bg-slate-700 cursor-not-allowed opacity-50" : "bg-purple-600 hover:bg-purple-500 glow-border"
                 }`}
               >
                 {loading ? "Verifying..." : "Verify Hash"}
@@ -165,39 +153,67 @@ const Verify = () => {
           )}
         </div>
 
+        {/* Result */}
         {result && (
-          <div className={`glass rounded-2xl p-6 fade-in-up border ${
-            result.isValid ? "border-green-500/30" : "border-red-500/30"
-          }`}>
-            <h3 className={`font-bold text-xl mb-4 ${
-              result.isValid ? "text-green-400" : "text-red-400"
-            }`}>
+          <div className={`glass rounded-2xl p-6 fade-in-up border ${result.isValid ? "border-green-500/30" : "border-red-500/30"}`}>
+            <h3 className={`font-bold text-xl mb-4 ${result.isValid ? "text-green-400" : "text-red-400"}`}>
               {result.message}
             </h3>
 
             {result.isValid && result.data && (
               <div className="space-y-3">
                 {[
-                  { label: "File Name", value: result.data.fileName },
-                  { label: "File Hash", value: result.data.fileHash },
-                  { label: "Uploaded By", value: result.data.uploadedBy },
-                  { label: "Timestamp", value: result.data.timestamp },
-                  { label: "Description", value: result.data.description },
-                  { label: "IPFS CID", value: result.data.ipfsCID },
-                ].map((item, i) => (
+                  { label: "File Name",    value: result.data.fileName    },
+                  { label: "Uploaded By",  value: result.data.uploadedBy  },
+                  { label: "Timestamp",    value: result.data.timestamp   },
+                  { label: "Description",  value: result.data.description },
+                  { label: "IPFS CID",     value: result.data.ipfsCID     },
+                ].map((item, i) => item.value && (
                   <div key={i} className="bg-slate-800/50 rounded-xl p-3">
                     <p className="text-slate-400 text-xs mb-1">{item.label}</p>
                     <p className="text-white text-sm font-mono break-all">{item.value}</p>
                   </div>
                 ))}
+
+                {/* File Hash with copy */}
+                <div className="bg-slate-800/50 rounded-xl p-3">
+                  <p className="text-slate-400 text-xs mb-1">File Hash (SHA-256)</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-white text-sm font-mono break-all flex-1">{result.data.fileHash}</p>
+                    <button
+                      onClick={copyHash}
+                      className="text-indigo-400 hover:text-indigo-300 text-xs flex-shrink-0 bg-slate-700 px-2 py-1 rounded"
+                    >
+                      📋 Copy
+                    </button>
+                  </div>
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex gap-3 mt-4">
+                  <button
+                    onClick={handleDownload}
+                    className="flex-1 py-3 bg-green-600 hover:bg-green-500 text-white rounded-xl font-semibold transition-colors"
+                  >
+                    ⬇️ Download File from IPFS
+                  </button>
+                  {result.data.ipfsURL && (
+                    <a
+                      href={result.data.ipfsURL}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 text-white rounded-xl font-semibold transition-colors text-center"
+                    >
+                      🌐 View on IPFS
+                    </a>
+                  )}
+                </div>
               </div>
             )}
 
             {!result.isValid && (
               <div className="bg-red-900/20 rounded-xl p-4 mt-2">
-                <p className="text-slate-300 text-sm">
-                  This file was never uploaded or has been modified after upload.
-                </p>
+                <p className="text-slate-300 text-sm">This file was never uploaded or has been modified after upload.</p>
                 <p className="text-slate-400 text-xs mt-2">
                   Hash checked: <span className="font-mono text-red-400">{result.data?.fileHash}</span>
                 </p>

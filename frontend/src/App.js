@@ -10,6 +10,7 @@ import Register from "./pages/Register";
 import Profile from "./pages/Profile";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import Profile from "./pages/Profile";
 
 const ProtectedRoute = ({ children }) => {
   const token = localStorage.getItem("token");

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-toastify";
@@ -13,7 +13,7 @@ const Profile = () => {
   const [uploads, setUploads] = useState([]);
   const [allUploads, setAllUploads] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState("my"); // "my" | "all"
+  const [tab, setTab] = useState("my");
 
   const isVerificationAuthority = user?.userType === "verification_authority";
 
@@ -26,13 +26,7 @@ const Profile = () => {
 
   const typeInfo = userTypeLabel[user?.userType] || userTypeLabel.personal;
 
-  useEffect(() => {
-    if (!user || !token) { navigate("/login"); return; }
-    fetchMyUploads();
-    if (isVerificationAuthority) fetchAllUploads();
-  }, []);
-
-  const fetchMyUploads = async () => {
+  const fetchMyUploads = useCallback(async () => {
     try {
       const res = await axios.get(`${BACKEND_URL}/api/upload/my-uploads`, {
         headers: { Authorization: `Bearer ${token}` },
@@ -43,16 +37,22 @@ const Profile = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
-  const fetchAllUploads = async () => {
+  const fetchAllUploads = useCallback(async () => {
     try {
       const res = await axios.get(`${BACKEND_URL}/api/upload/all`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.data.success) setAllUploads(res.data.uploads);
     } catch {}
-  };
+  }, [token]);
+
+  useEffect(() => {
+    if (!user || !token) { navigate("/login"); return; }
+    fetchMyUploads();
+    if (isVerificationAuthority) fetchAllUploads();
+  }, [user, token, isVerificationAuthority, fetchMyUploads, fetchAllUploads, navigate]);
 
   const handleDownload = (fileHash) => {
     window.open(`${BACKEND_URL}/api/verify/download/${fileHash}`, "_blank");
@@ -113,10 +113,7 @@ const Profile = () => {
           <h3 className="text-white font-bold mb-2">🔑 How to Share or Access a File</h3>
           <p className="text-slate-400 text-sm">
             Copy the <span className="text-indigo-400 font-semibold">File Hash</span> from any upload below and share it with anyone. They can go to the{" "}
-            <span
-              onClick={() => navigate("/verify")}
-              className="text-indigo-400 cursor-pointer hover:underline"
-            >
+            <span onClick={() => navigate("/verify")} className="text-indigo-400 cursor-pointer hover:underline">
               Verify page
             </span>{" "}
             → paste the hash → verify authenticity and download the original file.
@@ -140,7 +137,7 @@ const Profile = () => {
                 tab === "all" ? "bg-rose-600 text-white" : "text-slate-400 hover:text-white"
               }`}
             >
-              All Uploads — Authority View ({allUploads.length})
+              All Uploads ({allUploads.length})
             </button>
           </div>
         )}
@@ -192,7 +189,6 @@ const Profile = () => {
                       <button
                         onClick={() => copyToClipboard(upload.fileHash)}
                         className="px-3 py-1.5 bg-slate-700 hover:bg-slate-600 text-white rounded-lg text-xs font-semibold transition-colors"
-                        title="Copy hash"
                       >
                         📋 Copy Hash
                       </button>
@@ -205,7 +201,6 @@ const Profile = () => {
                     </div>
                   </div>
 
-                  {/* Hash display */}
                   <div className="mt-3 bg-slate-900/60 rounded-lg px-3 py-2 flex items-center justify-between gap-2">
                     <span className="text-slate-400 text-xs font-mono truncate">{upload.fileHash}</span>
                     <button

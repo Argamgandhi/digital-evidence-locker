@@ -3,7 +3,7 @@ const FormData = require("form-data");
 
 const uploadToIPFS = async (fileBuffer, fileName) => {
   try {
-    const jwt = process.env.PINATA_JWT || "your_actual_jwt_here";
+    const jwt = process.env.PINATA_JWT || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySW5mb3JtYXRpb24iOnsiaWQiOiJhMjQxOGVlNS00MDAzLTRhMTItYmYzYS04NWU1Y2Q5MjQ5YzYiLCJlbWFpbCI6ImFyZ2FtZ2FuZGhpQGdtYWlsLmNvbSIsImVtYWlsX3ZlcmlmaWVkIjp0cnVlLCJwaW5fcG9saWN5Ijp7InJlZ2lvbnMiOlt7ImRlc2lyZWRSZXBsaWNhdGlvbkNvdW50IjoxLCJpZCI6IkZSQTEifSx7ImRlc2lyZWRSZXBsaWNhdGlvbkNvdW50IjoxLCJpZCI6Ik5ZQzEifV0sInZlcnNpb24iOjF9LCJtZmFfZW5hYmxlZCI6ZmFsc2UsInN0YXR1cyI6IkFDVElWRSJ9LCJhdXRoZW50aWNhdGlvblR5cGUiOiJzY29wZWRLZXkiLCJzY29wZWRLZXlLZXkiOiIyNDFmZjEzNWQ0YWU4MzdmNzdmZSIsInNjb3BlZEtleVNlY3JldCI6ImQxYmFmZThjNzk1ZmJjMTdmNDUyZjVmZDQ3ZDU1NjE5MzhmNGE4NTY1NWE1OGJhNWM1OGZmMWRkYzMzOWY5ODEiLCJleHAiOjE4MDYyNTQ5MDJ9.ix1zuigKmaUA2-PqIJ5ZqA_AMw5dklokTvWAZGvdB-w";
     
     if (!jwt) {
       console.error("PINATA_JWT environment variable is not set!");

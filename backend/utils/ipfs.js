@@ -1,30 +1,32 @@
 const axios = require("axios");
 const FormData = require("form-data");
-const fs = require("fs");
 
-// We'll use NFT.Storage free IPFS service
 const uploadToIPFS = async (fileBuffer, fileName) => {
   try {
     const formData = new FormData();
-    formData.append("file", fileBuffer, fileName);
+    formData.append("file", fileBuffer, {
+      filename: fileName,
+      contentType: "application/octet-stream",
+    });
 
     const response = await axios.post(
-      "https://api.nft.storage/upload",
+      "https://api.pinata.cloud/pinning/pinFileToIPFS",
       formData,
       {
+        maxBodyLength: Infinity,
         headers: {
           ...formData.getHeaders(),
-          Authorization: `Bearer ${process.env.NFT_STORAGE_KEY}`,
+          Authorization: `Bearer ${process.env.PINATA_JWT}`,
         },
       }
     );
 
-    const cid = response.data.value.cid;
+    const cid = response.data.IpfsHash;
+    console.log("IPFS upload success, CID:", cid);
     return cid;
   } catch (error) {
     console.error("IPFS upload error:", error.message);
-    // Return a mock CID for local testing if IPFS fails
-    return `local_${Date.now()}_${fileName}`;
+    throw new Error("IPFS upload failed: " + error.message);
   }
 };
 

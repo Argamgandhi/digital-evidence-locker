@@ -3,7 +3,7 @@ const FormData = require("form-data");
 
 const uploadToIPFS = async (fileBuffer, fileName) => {
   try {
-    const jwt = process.env.PINATA_JWT;
+    const jwt = process.env.PINATA_JWT || "your_actual_jwt_here";
     
     if (!jwt) {
       console.error("PINATA_JWT environment variable is not set!");

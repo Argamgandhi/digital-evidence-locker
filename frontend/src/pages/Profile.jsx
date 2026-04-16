@@ -5,7 +5,7 @@ import { toast } from "react-toastify";
 import { ethers } from "ethers";
 import tokenABI from "../abi/EvidenceToken.json";
 
-const BACKEND_URL = "http://localhost:5000"; 
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL ?? "http://localhost:5000"; 
 
 const Profile = () => {
   const navigate = useNavigate();

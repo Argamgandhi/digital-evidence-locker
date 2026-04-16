@@ -28,10 +28,14 @@ router.post('/', upload.single('file'), async (req, res) => {
 
     const { description } = req.body;
     const fileBuffer = req.file.buffer;
+    console.log("fileBuffer");
+    console.log(fileBuffer.byteLength);
     const fileName = req.file.originalname;
     const fileSize = `${(req.file.size / 1024).toFixed(2)} KB`;
 
     const fileHash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+    console.log("filehash");
+    console.log(fileHash);
     const ipfsCID = await uploadToIPFS(fileBuffer, fileName);
     const txHash = await registerEvidence(fileHash, ipfsCID, fileName, description || '');
 

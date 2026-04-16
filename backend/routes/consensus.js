@@ -25,6 +25,7 @@ const authAuthority = async (req, res, next) => {
 // POST /api/consensus/vote
 router.post('/vote', authAuthority, async (req, res) => {
   try {
+    console.log("okie");
     const { fileHash, approve, reason } = req.body;
     if (!fileHash || approve === undefined) {
       return res.status(400).json({ success: false, message: 'Missing parameters' });

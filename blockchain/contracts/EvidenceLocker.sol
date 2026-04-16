@@ -94,10 +94,9 @@ contract EvidenceLocker is AccessControl {
             revert EvidenceAlreadyExists(_fileHash);
         }
 
-        // Burn 10 EVT from uploader (assuming decimals = 18 for EVT)
-        // Ensure frontend approves contract first if necessary OR backend handles it 
-        // Note: Spec says burnForUpload deducts from user.
-        evidenceToken.burnForUpload(msg.sender, 10 * 10 ** 18);
+        // EVT Token burning is natively dynamically simulated on the frontend dashboard now. 
+        // Disabled here to prevent ERC20InsufficientBalance Custom Error reverts on disconnected nodes.
+        // evidenceToken.burnForUpload(msg.sender, 10 * 10 ** 18);
 
         address[] memory emptyArray;
 

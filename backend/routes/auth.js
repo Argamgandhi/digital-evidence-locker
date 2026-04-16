@@ -26,7 +26,7 @@ router.post('/register', async (req, res) => {
       dob:          dob || '',
       phone:        phone || '',
       organisation: organisation || '',
-      userType:     userType || 'personal',
+      userType:     userType || 'professional',
     });
 
     const token = jwt.sign(

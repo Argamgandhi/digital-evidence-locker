@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 import axios from "axios";
 
-const BACKEND_URL = "https://amiable-expression-production.up.railway.app";
+const BACKEND_URL = "http://localhost:5000";
 
 const Register = () => {
   const navigate = useNavigate();
@@ -11,7 +11,7 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [showPass, setShowPass] = useState(false);
 
-  const userType = localStorage.getItem("userType") || "personal";
+  const userType = localStorage.getItem("userType") || "professional";
 
   const [form, setForm] = useState({
     firstName: "",

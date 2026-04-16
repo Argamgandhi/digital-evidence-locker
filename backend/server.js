@@ -23,9 +23,10 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
-app.use('/api/auth',   require('./routes/auth'));
-app.use('/api/upload', require('./routes/upload'));
-app.use('/api/verify', require('./routes/verify'));
+app.use('/api/auth',      require('./routes/auth'));
+app.use('/api/upload',    require('./routes/upload'));
+app.use('/api/verify',    require('./routes/verify'));
+app.use('/api/consensus', require('./routes/consensus'));
 
 // Health check
 app.get('/', (req, res) => {

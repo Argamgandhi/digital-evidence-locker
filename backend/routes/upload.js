@@ -95,7 +95,11 @@ router.get('/all', async (req, res) => {
     }
 
     const uploads = await Upload.findAll({
-      include: [{ model: User, attributes: ['firstName', 'lastName', 'email', 'userType'] }],
+      include: [{ 
+        model: User, 
+        attributes: ['firstName', 'lastName', 'email', 'userType', 'organisation'],
+        where: { organisation: user.organisation }
+      }],
       order: [['uploadedAt', 'DESC']],
     });
 
@@ -110,13 +114,17 @@ router.get('/stats', async (req, res) => {
   try {
     const totalUploads = await Upload.count();
     const totalUsers = await User.count();
+    const verified = await Upload.count({ where: { status: 'Verified' }});
+    const rejected = await Upload.count({ where: { status: 'Rejected' }});
+    const pending = await Upload.count({ where: { status: ['Submitted', 'UnderReview'] }});
+    
     const recentUploads = await Upload.findAll({
       limit: 5,
       order: [['uploadedAt', 'DESC']],
-      attributes: ['fileName', 'fileHash', 'uploadedAt', 'txHash'],
+      attributes: ['fileName', 'fileHash', 'uploadedAt', 'txHash', 'status'],
     });
 
-    res.json({ success: true, totalUploads, totalUsers, recentUploads });
+    res.json({ success: true, totalUploads, totalUsers, verified, pending, rejected, recentUploads });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

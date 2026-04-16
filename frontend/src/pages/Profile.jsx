@@ -2,8 +2,10 @@ import React, { useEffect, useState, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "react-toastify";
+import { ethers } from "ethers";
+import tokenABI from "../abi/EvidenceToken.json";
 
-const BACKEND_URL = "https://amiable-expression-production.up.railway.app";
+const BACKEND_URL = "http://localhost:5000"; 
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -13,18 +15,26 @@ const Profile = () => {
   const [uploads, setUploads] = useState([]);
   const [allUploads, setAllUploads] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState("my");
-
   const isVerificationAuthority = user?.userType === "verification_authority";
+  const [tab, setTab] = useState(isVerificationAuthority ? "all" : "my");
+  const [evtBalance, setEvtBalance] = useState("100");
 
   const userTypeLabel = {
-    personal:               { label: "Personal",               icon: "👤", color: "text-purple-400" },
     professional:           { label: "Professional",           icon: "💼", color: "text-indigo-400" },
     organization:           { label: "Organisation",           icon: "🏛️", color: "text-blue-400"   },
     verification_authority: { label: "Verification Authority", icon: "🔏", color: "text-rose-400"   },
   };
 
-  const typeInfo = userTypeLabel[user?.userType] || userTypeLabel.personal;
+  const typeInfo = userTypeLabel[user?.userType] || userTypeLabel.professional;
+
+  const calculateEVT = useCallback(() => {
+    if (isVerificationAuthority) {
+      setEvtBalance("100"); // Base granted amount for authorities (they earn via consensus in future)
+    } else {
+      const deduction = uploads.length * 10;
+      setEvtBalance((100 - deduction).toString());
+    }
+  }, [uploads, isVerificationAuthority]);
 
   const fetchMyUploads = useCallback(async () => {
     try {
@@ -49,10 +59,14 @@ const Profile = () => {
   }, [token]);
 
   useEffect(() => {
-    if (!user || !token) { navigate("/login"); return; }
+    if (!token) { navigate("/login"); return; }
     fetchMyUploads();
     if (isVerificationAuthority) fetchAllUploads();
-  }, [user, token, isVerificationAuthority, fetchMyUploads, fetchAllUploads, navigate]);
+  }, [token, isVerificationAuthority, fetchMyUploads, fetchAllUploads, navigate]);
+
+  useEffect(() => {
+    calculateEVT();
+  }, [calculateEVT]);
 
   const handleDownload = (fileHash) => {
     window.open(`${BACKEND_URL}/api/verify/download/${fileHash}`, "_blank");
@@ -71,9 +85,32 @@ const Profile = () => {
 
   const displayList = tab === "my" ? uploads : allUploads;
 
+  const getStatusBadge = (status) => {
+    switch(status) {
+      case "Submitted":
+        return <span className="bg-slate-600 text-white px-2 py-1 rounded text-xs font-bold">Submitted</span>;
+      case "UnderReview":
+        return <span className="bg-yellow-600 text-white px-2 py-1 rounded text-xs font-bold">Under Review</span>;
+      case "Verified":
+        return <span className="bg-green-600 text-white px-2 py-1 rounded text-xs font-bold">Verified</span>;
+      case "Rejected":
+        return <span className="bg-red-600 text-white px-2 py-1 rounded text-xs font-bold">Rejected</span>;
+      default: return null;
+    }
+  };
+
   return (
     <div className="min-h-screen py-12 px-6">
       <div className="max-w-5xl mx-auto">
+      
+        {/* EVT Token Balance Card */}
+        <div className="glass rounded-2xl p-6 mb-6 flex flex-col sm:flex-row items-center justify-between border border-purple-500/30 bg-purple-900/10">
+          <div>
+            <h2 className="text-xl font-bold text-purple-300 mb-1">Your EVT Balance: <span className="text-white">{evtBalance} EVT</span></h2>
+            <p className="text-slate-400 text-sm">10 EVT charged per upload | 10 EVT rewarded per verified authority vote</p>
+          </div>
+          <div className="mt-4 sm:mt-0 text-4xl">💎</div>
+        </div>
 
         {/* Profile Header */}
         <div className="glass rounded-2xl p-6 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -93,12 +130,22 @@ const Profile = () => {
             </div>
           </div>
           <div className="flex gap-3">
-            <button
-              onClick={() => navigate("/upload")}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold transition-colors"
-            >
-              + Upload New
-            </button>
+            {isVerificationAuthority && (
+               <button
+                 onClick={() => navigate("/consensus")}
+                 className="px-4 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-sm font-semibold transition-colors"
+               >
+                 Consensus Panel
+               </button>
+            )}
+            {!isVerificationAuthority && (
+              <button
+                onClick={() => navigate("/upload")}
+                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-sm font-semibold transition-colors"
+              >
+                + Upload New
+              </button>
+            )}
             <button
               onClick={handleLogout}
               className="px-4 py-2 glass hover:bg-red-600/20 text-slate-300 hover:text-red-400 rounded-xl text-sm font-semibold transition-colors"
@@ -120,8 +167,8 @@ const Profile = () => {
           </p>
         </div>
 
-        {/* Tabs for Verification Authority */}
-        {isVerificationAuthority && (
+        {/* Tabs for Normal Users */}
+        {!isVerificationAuthority && (
           <div className="glass rounded-xl p-1 flex gap-1 mb-6 w-fit">
             <button
               onClick={() => setTab("my")}
@@ -130,14 +177,6 @@ const Profile = () => {
               }`}
             >
               My Uploads ({uploads.length})
-            </button>
-            <button
-              onClick={() => setTab("all")}
-              className={`px-5 py-2 rounded-lg text-sm font-semibold transition-all ${
-                tab === "all" ? "bg-rose-600 text-white" : "text-slate-400 hover:text-white"
-              }`}
-            >
-              All Uploads ({allUploads.length})
             </button>
           </div>
         )}
@@ -171,7 +210,10 @@ const Profile = () => {
                         📄
                       </div>
                       <div className="min-w-0">
-                        <p className="text-white font-semibold truncate">{upload.fileName}</p>
+                        <p className="text-white font-semibold truncate flex gap-2 items-center">
+                          {upload.fileName}
+                          {getStatusBadge(upload.status)}
+                        </p>
                         {upload.description && (
                           <p className="text-slate-400 text-xs truncate">{upload.description}</p>
                         )}
@@ -180,7 +222,7 @@ const Profile = () => {
                             By: {upload.User.firstName} {upload.User.lastName} ({upload.User.email})
                           </p>
                         )}
-                        <p className="text-slate-500 text-xs">
+                        <p className="text-slate-500 text-xs mt-1">
                           {upload.fileSize} • {new Date(upload.uploadedAt).toLocaleString()}
                         </p>
                       </div>
@@ -198,6 +240,16 @@ const Profile = () => {
                       >
                         ⬇️ Download
                       </button>
+                      {upload.ipfsCID && (
+                        <a
+                          href={`https://gateway.pinata.cloud/ipfs/${upload.ipfsCID}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white rounded-lg text-xs font-semibold transition-colors"
+                        >
+                          🌐 View on IPFS
+                        </a>
+                      )}
                     </div>
                   </div>
 

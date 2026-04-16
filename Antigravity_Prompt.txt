@@ -1,0 +1,445 @@
+You are an expert full-stack blockchain developer. I have an existing project called 
+"Blockchain-Based Digital Evidence Locker" and I need you to refine, fix, and extend it 
+significantly. Below is the complete specification of what exists and what needs to be 
+added/changed.
+
+=======================================================================
+PART 1: EXISTING PROJECT SUMMARY
+=======================================================================
+
+The project is a tamper-proof digital evidence management system where:
+- Files are hashed using SHA-256
+- Stored on IPFS via Pinata
+- Hash is permanently recorded on Ethereum Sepolia testnet via a Solidity smart contract
+- Anyone can verify a file's authenticity by re-computing its hash and checking blockchain
+
+Current Tech Stack:
+- Frontend: React.js, Tailwind CSS, framer-motion, react-toastify, react-dropzone, 
+  react-router-dom, axios, ethers.js v6
+- Backend: Node.js, Express.js, multer, crypto, ethers.js v6, bcryptjs, jsonwebtoken, 
+  sequelize, sqlite3, axios, form-data
+- Blockchain: Solidity ^0.8.20 on Ethereum Sepolia via Hardhat v2
+- Storage: IPFS via Pinata API
+- Auth: JWT with roles (personal/professional/organization/verification_authority)
+
+Current folder structure:
+digital-evidence-locker/
+├── blockchain/
+│   ├── contracts/EvidenceLocker.sol
+│   ├── scripts/deploy.js
+│   ├── scripts/copyABI.js
+│   └── hardhat.config.js
+├── backend/
+│   ├── routes/upload.js
+│   ├── routes/verify.js
+│   ├── routes/auth.js
+│   ├── utils/blockchain.js
+│   ├── utils/ipfs.js
+│   ├── models.js
+│   ├── server.js
+│   ├── Dockerfile
+│   └── .env
+└── frontend/
+    ├── public/index.html
+    └── src/
+        ├── components/Navbar.jsx
+        ├── pages/
+        │   ├── UserType.jsx
+        │   ├── Login.jsx
+        │   ├── Register.jsx
+        │   ├── Home.jsx
+        │   ├── Upload.jsx
+        │   ├── Verify.jsx
+        │   └── Profile.jsx
+        ├── App.js
+        ├── index.js
+        └── index.css
+
+=======================================================================
+PART 2: PROBLEMS TO FIX IN EXISTING CODE
+=======================================================================
+
+1. REMOVE the "Personal Use" login/register user type entirely. 
+   Only keep: Professional, Organisation, Verification Authority.
+   Update UserType.jsx to show only 3 cards.
+   Update Register.jsx to remove personal option.
+   Update backend auth routes and User model to reflect only these 3 roles.
+
+2. Fix any CORS errors between frontend and backend. Ensure the backend 
+   allows requests from both the deployed Vercel URL and localhost:3000.
+
+3. Fix any JWT token expiry issues — tokens should be valid for 7 days.
+
+4. Fix Upload.jsx — after successful upload, the SHA-256 hash and IPFS CID 
+   must both be clearly shown with individual copy-to-clipboard buttons.
+
+5. Fix Verify.jsx — the "Verify by Hash" input should trim whitespace before 
+   sending to backend to prevent false mismatch errors.
+
+6. Fix Profile.jsx — the uploaded files table should show a working 
+   "View on IPFS" link and formatted upload timestamps.
+
+7. Fix Navbar.jsx — mobile hamburger menu should close automatically 
+   after a link is clicked.
+
+8. Make the entire frontend fully responsive for screens 320px and above. 
+   No horizontal overflow. Fix any broken layouts on mobile.
+
+9. Fix the Home.jsx stats section — if the backend is unreachable, 
+   show a graceful fallback (e.g., "—") instead of crashing.
+
+10. Remove all console.log debug statements from production code in both 
+    frontend and backend.
+
+=======================================================================
+PART 3: NEW FEATURES TO ADD
+=======================================================================
+
+-------------------------------------------------------------------
+FEATURE 1: ERC-20 TOKEN — EvidenceToken (EVT)
+-------------------------------------------------------------------
+
+Create a new Solidity contract: EvidenceToken.sol
+
+Specifications:
+- Token name: "Evidence Token", symbol: "EVT"
+- Inherits OpenZeppelin ERC20 and Ownable
+- Initial supply: 1,000,000 EVT minted to the deployer
+- Function: rewardAuthority(address authority, uint256 amount) 
+  callable only by owner — mints tokens to an authority address
+- Function: burnForUpload(address uploader, uint256 amount) 
+  callable only by the EvidenceLocker contract address — burns tokens 
+  when a user uploads evidence (upload cost = 10 EVT)
+- Function: setEvidenceLockerContract(address lockerAddress) 
+  callable only by owner — sets the authorized locker contract
+- Public view: balanceOf(address) inherited from ERC20
+- Events: TokensRewarded(address indexed authority, uint256 amount),
+  TokensBurned(address indexed uploader, uint256 amount)
+
+Integration:
+- When a user uploads evidence, the backend calls burnForUpload 
+  (deducting 10 EVT from their wallet balance)
+- When an authority approves/verifies evidence (final consensus reached), 
+  the backend calls rewardAuthority (awarding 10 EVT to each authority 
+  who voted to approve)
+- On Profile.jsx, show the user's EVT token balance fetched 
+  via ethers.js using the ERC-20 contract ABI
+- On Home.jsx, show "Total EVT in Circulation" as a live stat
+
+Add to blockchain/contracts/EvidenceToken.sol
+Add deploy script: blockchain/scripts/deployToken.js
+Export ABI to: frontend/src/abi/EvidenceToken.json and backend/abi/EvidenceToken.json
+
+-------------------------------------------------------------------
+FEATURE 2: MULTI-AUTHORITY CONSENSUS SYSTEM
+-------------------------------------------------------------------
+
+Update EvidenceLocker.sol with the following:
+
+New Roles (use OpenZeppelin AccessControl):
+- DEFAULT_ADMIN_ROLE: deployer
+- AUTHORITY_ROLE: keccak256("AUTHORITY_ROLE") — assigned to verified authority members
+- UPLOADER_ROLE: keccak256("UPLOADER_ROLE") — assigned to registered uploaders
+
+Consensus Configuration:
+- uint256 public requiredApprovals = 2 (configurable by admin)
+- uint256 public requiredRejections = 1 (configurable by admin)
+- Function: setConsensusThreshold(uint256 approvals, uint256 rejections) 
+  onlyRole(DEFAULT_ADMIN_ROLE)
+- Function: grantAuthorityRole(address account) onlyRole(DEFAULT_ADMIN_ROLE)
+- Function: revokeAuthorityRole(address account) onlyRole(DEFAULT_ADMIN_ROLE)
+
+Updated Evidence Struct:
+struct Evidence {
+  string fileName;
+  string fileHash;
+  string ipfsCID;
+  address uploadedBy;
+  uint256 timestamp;
+  string description;
+  bool exists;
+  EvidenceStatus status;           // new
+  address[] approvedBy;            // new — list of authority addresses who approved
+  address[] rejectedBy;            // new — list of authority addresses who rejected
+  string rejectionReason;          // new
+  uint256 lastUpdated;             // new
+}
+
+Enum:
+enum EvidenceStatus { Submitted, UnderReview, Verified, Rejected }
+
+New/Updated Functions:
+
+storeEvidence(string fileName, string fileHash, string ipfsCID, string description)
+- requires UPLOADER_ROLE or is open to any registered user
+- sets status to Submitted
+- emits EvidenceSubmitted(fileHash, uploadedBy, timestamp)
+
+castVote(string fileHash, bool approve, string reason)
+- only AUTHORITY_ROLE
+- authority cannot vote twice on same evidence (check mapping)
+- if approve: add to approvedBy array
+- if reject: add to rejectedBy array, store reason
+- after each vote, check consensus:
+  * if approvedBy.length >= requiredApprovals → set status = Verified, 
+    emit EvidenceVerified, trigger EVT reward
+  * if rejectedBy.length >= requiredRejections → set status = Rejected, 
+    emit EvidenceRejected
+  * else set status = UnderReview
+- emits VoteCast(fileHash, authority, approve, timestamp)
+
+getVotingStatus(string fileHash) view returns:
+  (uint256 approvalCount, uint256 rejectionCount, EvidenceStatus status, 
+   string rejectionReason, address[] approvedBy, address[] rejectedBy)
+
+hasVoted(string fileHash, address authority) view returns bool
+
+getAllPendingEvidence() returns string[] — hashes with status Submitted or UnderReview
+  onlyRole(AUTHORITY_ROLE)
+
+Events to add:
+- EvidenceSubmitted(string fileHash, address uploadedBy, uint256 timestamp)
+- VoteCast(string fileHash, address authority, bool approved, uint256 timestamp)
+- EvidenceVerified(string fileHash, uint256 approvalCount, uint256 timestamp)
+- EvidenceRejected(string fileHash, uint256 rejectionCount, string reason, uint256 timestamp)
+- ConsensusThresholdUpdated(uint256 newApprovals, uint256 newRejections)
+
+-------------------------------------------------------------------
+FEATURE 3: EVIDENCE STATUS LIFECYCLE
+-------------------------------------------------------------------
+
+Update backend routes to handle evidence status:
+
+In upload.js:
+- After storing on blockchain, save status = "Submitted" in the Upload model
+- Add status field to Upload model in models.js
+
+New route: backend/routes/consensus.js
+- POST /api/consensus/vote
+  Body: { fileHash, approve (bool), reason (string, optional) }
+  Auth: JWT required, user must have userType = "verification_authority"
+  Action: calls contract.castVote(fileHash, approve, reason)
+  Returns: { success, newStatus, approvalCount, rejectionCount }
+
+- GET /api/consensus/pending
+  Auth: JWT required, verification_authority only
+  Returns: list of all evidence with status Submitted or UnderReview 
+  with full details (fileName, uploadedBy, timestamp, approvals, rejections)
+
+- GET /api/consensus/status/:fileHash
+  Public route
+  Returns: { status, approvalCount, rejectionCount, approvedBy[], rejectedBy[], 
+             rejectionReason, lastUpdated }
+
+Update verify routes:
+- GET /api/verify/status/:fileHash should return the full consensus status
+
+Update Upload model in models.js:
+- Add field: status (ENUM: Submitted, UnderReview, Verified, Rejected), 
+  default: Submitted
+- Add field: approvalCount (INTEGER), default: 0
+- Add field: rejectionCount (INTEGER), default: 0
+- Add field: rejectionReason (STRING), nullable
+
+-------------------------------------------------------------------
+FEATURE 4: NEW FRONTEND PAGES AND UPDATES
+-------------------------------------------------------------------
+
+New Page: frontend/src/pages/ConsensusPanel.jsx
+- Only accessible to users with userType = "verification_authority"
+- Shows a table/list of all pending evidence (Submitted or UnderReview)
+- Each row shows: fileName, fileHash (truncated with tooltip), 
+  uploaderAddress, submittedAt, currentApprovals/requiredApprovals, 
+  currentRejections/requiredRejections, status badge
+- Each row has: "Approve" button (green) and "Reject" button (red)
+- On clicking Reject, show a modal asking for a rejection reason (textarea)
+- On clicking Approve/Reject, call POST /api/consensus/vote and 
+  refresh the list
+- Show toast notification: "Vote recorded on blockchain"
+- Show loading spinner while transaction is being mined
+- If evidence already has user's vote, show "Already Voted" badge 
+  instead of buttons
+
+Update Verify.jsx:
+- After verifying a file or hash, show the consensus status prominently
+- Add a colored status badge:
+  * Submitted → gray badge "Submitted"
+  * UnderReview → yellow badge "Under Review (X/Y approvals)"
+  * Verified → green badge with checkmark "Verified by Consensus"
+  * Rejected → red badge "Rejected — [reason]"
+- Show the list of approving authority addresses (truncated)
+- Show the list of rejecting authority addresses with reasons
+
+Update Upload.jsx:
+- After successful upload, show status badge "Submitted — Awaiting Authority Review"
+- Add info box: "Your evidence has been submitted to the blockchain. 
+  It will be reviewed by authorities for consensus-based verification."
+
+Update Profile.jsx:
+- In the uploads table, add a "Status" column with colored badge per upload
+- Add EVT token balance card at the top:
+  "Your EVT Balance: [balance] EVT"
+  Subtitle: "10 EVT charged per upload | 10 EVT rewarded per verified authority vote"
+- Add link to ConsensusPanel if userType is verification_authority
+
+Update Home.jsx:
+- Add status breakdown stats:
+  * Verified Evidence: [count]
+  * Pending Review: [count]  
+  * Rejected: [count]
+- Add "Total EVT in Circulation" stat card
+- Update the "How It Works" steps to reflect the consensus flow:
+  1. Upload & Hash
+  2. Store on IPFS
+  3. Submit to Blockchain
+  4. Authorities Vote (Consensus)
+  5. Status Finalized
+
+Update Navbar.jsx:
+- Add "Consensus Panel" link — only visible when userType === "verification_authority"
+
+Update App.js routes:
+- /consensus → ConsensusPanel (protected, authority only)
+- If non-authority tries to access /consensus, redirect to /home
+
+-------------------------------------------------------------------
+FEATURE 5: GAS OPTIMIZATION IN SMART CONTRACT
+-------------------------------------------------------------------
+
+Apply these gas optimization techniques to both EvidenceLocker.sol 
+and EvidenceToken.sol:
+
+1. Use bytes32 instead of string for fileHash in mappings:
+   - mapping(bytes32 => Evidence) private evidenceStore
+   - All internal logic uses bytes32, but external functions accept 
+     string and convert using keccak256(bytes(fileHash))
+   - Keep string in the Evidence struct for readability in getters
+
+2. Use uint128 for timestamp and vote counts inside struct 
+   instead of uint256 to pack storage slots:
+   struct Evidence {
+     string fileName;
+     string fileHash;
+     string ipfsCID;
+     address uploadedBy;      // 20 bytes
+     uint128 timestamp;       // 16 bytes — packed with uploadedBy
+     uint128 lastUpdated;     // 16 bytes
+     uint16 approvalCount;    // 2 bytes
+     uint16 rejectionCount;   // 2 bytes
+     EvidenceStatus status;   // 1 byte enum
+     bool exists;             // 1 byte — packed together
+     string description;
+     string rejectionReason;
+     address[] approvedBy;
+     address[] rejectedBy;
+   }
+
+3. Use custom errors instead of require strings:
+   error EvidenceAlreadyExists(string fileHash);
+   error EvidenceNotFound(string fileHash);
+   error AlreadyVoted(address authority, string fileHash);
+   error NotAuthorized(address caller);
+   error InvalidConsensusThreshold();
+   Replace all require("string message") with revert CustomError(...)
+
+4. Add view modifier to all read-only functions
+
+5. Use unchecked {} blocks for safe increments inside vote counting 
+   loops to save gas on overflow checks
+
+6. Emit events before state changes where possible to save gas 
+   on reverting transactions
+
+7. In getAllHashes() and getAllPendingEvidence(), avoid returning 
+   the full array in one call — instead add pagination:
+   function getHashesPaginated(uint256 start, uint256 count) 
+     external view returns (string[] memory)
+
+8. Add a natspec comment above each function explaining gas cost 
+   considerations like:
+   /// @dev Uses bytes32 mapping key to save ~500 gas vs string key lookup
+
+Add a file: blockchain/GAS_OPTIMIZATION_NOTES.md documenting:
+- Before/after estimated gas costs for each major function
+- Which optimizations were applied and why
+- How to measure gas using Hardhat gas reporter
+- Add hardhat-gas-reporter to hardhat.config.js
+- Table format showing: Function | Unoptimized Gas | Optimized Gas | Saving %
+
+=======================================================================
+PART 5: UPDATED DEPLOYMENT INSTRUCTIONS
+=======================================================================
+
+blockchain/scripts/deploy.js — update to:
+1. Deploy EvidenceToken.sol → get tokenAddress
+2. Deploy EvidenceLocker.sol with tokenAddress as constructor arg
+3. Call token.setEvidenceLockerContract(lockerAddress)
+4. Grant AUTHORITY_ROLE to a list of authority addresses passed as args
+5. Log all addresses and save to a deployments.json file
+
+blockchain/scripts/copyABI.js — update to copy both 
+EvidenceLocker.json and EvidenceToken.json ABIs to:
+- frontend/src/abi/
+- backend/abi/
+
+Add to backend .env:
+TOKEN_CONTRACT_ADDRESS=0x...EVT token deployed address...
+
+=======================================================================
+PART 6: FINAL CODE QUALITY REQUIREMENTS
+=======================================================================
+
+1. All new React components must use functional components with hooks
+2. All API calls in frontend must have try/catch with toast error messages
+3. All backend routes must validate input and return consistent JSON:
+   { success: true/false, data: {...}, message: "..." }
+4. Use async/await throughout — no .then() chains
+5. All Solidity functions must have NatSpec comments
+6. All new files must have a top comment block explaining the file's purpose
+7. Do not use any deprecated ethers.js v5 syntax — use ethers.js v6 throughout
+8. Tailwind classes only for styling — no inline styles except where 
+   absolutely necessary for dynamic values
+9. Status badges must use consistent color system:
+   Submitted: gray, UnderReview: yellow/amber, Verified: green, Rejected: red
+10. All modals must be closable with Escape key and clicking outside
+
+=======================================================================
+PART 7: FILE OUTPUT INSTRUCTIONS
+=======================================================================
+
+Please output every file that needs to be created or modified. 
+For each file, clearly state at the top:
+- File path
+- Whether it is NEW or MODIFIED
+- A one-line summary of what changed
+
+Output files in this order:
+1. blockchain/contracts/EvidenceToken.sol (NEW)
+2. blockchain/contracts/EvidenceLocker.sol (MODIFIED)
+3. blockchain/scripts/deploy.js (MODIFIED)
+4. blockchain/scripts/copyABI.js (MODIFIED)
+5. blockchain/hardhat.config.js (MODIFIED)
+6. blockchain/GAS_OPTIMIZATION_NOTES.md (NEW)
+7. backend/models.js (MODIFIED)
+8. backend/routes/auth.js (MODIFIED)
+9. backend/routes/upload.js (MODIFIED)
+10. backend/routes/verify.js (MODIFIED)
+11. backend/routes/consensus.js (NEW)
+12. backend/utils/blockchain.js (MODIFIED)
+13. backend/server.js (MODIFIED)
+14. backend/abi/ (folder — populated by copyABI script)
+15. frontend/src/abi/EvidenceToken.json (NEW — after deploy)
+16. frontend/src/pages/UserType.jsx (MODIFIED)
+17. frontend/src/pages/Login.jsx (MODIFIED — minor fixes)
+18. frontend/src/pages/Register.jsx (MODIFIED)
+19. frontend/src/pages/Home.jsx (MODIFIED)
+20. frontend/src/pages/Upload.jsx (MODIFIED)
+21. frontend/src/pages/Verify.jsx (MODIFIED)
+22. frontend/src/pages/Profile.jsx (MODIFIED)
+23. frontend/src/pages/ConsensusPanel.jsx (NEW)
+24. frontend/src/components/Navbar.jsx (MODIFIED)
+25. frontend/src/App.js (MODIFIED)
+
+=======================================================================
+END OF PROMPT
+=======================================================================

@@ -16,27 +16,31 @@ const User = sequelize.define('User', {
   dob:          { type: DataTypes.STRING },
   phone:        { type: DataTypes.STRING },
   organisation: { type: DataTypes.STRING },
-  userType:     { type: DataTypes.STRING, defaultValue: 'personal' },
-  // userType: 'personal' | 'professional' | 'organization' | 'verification_authority'
+  userType:     { type: DataTypes.STRING, defaultValue: 'professional' },
+  // userType: 'professional' | 'organization' | 'verification_authority'
 });
 
 const Upload = sequelize.define('Upload', {
-  id:          { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
-  userId:      { type: DataTypes.INTEGER, allowNull: false },
-  fileName:    { type: DataTypes.STRING, allowNull: false },
-  fileHash:    { type: DataTypes.STRING, allowNull: false, unique: true },
-  ipfsCID:     { type: DataTypes.STRING },
-  description: { type: DataTypes.STRING },
-  txHash:      { type: DataTypes.STRING },
-  fileSize:    { type: DataTypes.STRING },
-  uploadedAt:  { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
+  id:              { type: DataTypes.INTEGER, primaryKey: true, autoIncrement: true },
+  userId:          { type: DataTypes.INTEGER, allowNull: false },
+  fileName:        { type: DataTypes.STRING, allowNull: false },
+  fileHash:        { type: DataTypes.STRING, allowNull: false, unique: true },
+  ipfsCID:         { type: DataTypes.STRING },
+  description:     { type: DataTypes.STRING },
+  txHash:          { type: DataTypes.STRING },
+  fileSize:        { type: DataTypes.STRING },
+  status:          { type: DataTypes.ENUM('Submitted', 'UnderReview', 'Verified', 'Rejected'), defaultValue: 'Submitted' },
+  approvalCount:   { type: DataTypes.INTEGER, defaultValue: 0 },
+  rejectionCount:  { type: DataTypes.INTEGER, defaultValue: 0 },
+  rejectionReason: { type: DataTypes.STRING, allowNull: true },
+  uploadedAt:      { type: DataTypes.DATE, defaultValue: DataTypes.NOW },
 });
 
 User.hasMany(Upload, { foreignKey: 'userId' });
 Upload.belongsTo(User, { foreignKey: 'userId' });
 
 const syncDB = async () => {
-  await sequelize.sync({ alter: true });
+  await sequelize.sync();
   console.log('Database synced!');
 };
 

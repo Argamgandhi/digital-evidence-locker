@@ -20,13 +20,7 @@ const UserType = () => {
       desc: "Lawyers, investigators, forensic experts, researchers",
       color: "from-indigo-600 to-indigo-800",
     },
-    {
-      id: "personal",
-      icon: "👤",
-      label: "Personal",
-      desc: "Individuals securing personal documents and files",
-      color: "from-purple-600 to-purple-800",
-    },
+
     {
       id: "verification_authority",
       icon: "🔏",

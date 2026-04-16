@@ -1,27 +1,26 @@
 const { ethers } = require('ethers');
-const contractABI = require('../EvidenceLocker.json');
-const contractAddress = require('../contractAddress.json');
+const contractABI = require('../abi/EvidenceLocker.json');
+const contractAddress = require('../../blockchain/deployments.json'); // Updated path since deployments are stored differently now depending on execution context. It's safe to assume `deployments.json` if we read the earlier script
 
 const getContract = () => {
   const provider = new ethers.JsonRpcProvider(process.env.RPC_URL);
   const wallet = new ethers.Wallet(process.env.PRIVATE_KEY, provider);
   const contract = new ethers.Contract(
-    contractAddress.address,
+    contractAddress.EvidenceLocker,
     contractABI.abi,
     wallet
   );
   return contract;
 };
 
-// Matches ABI: storeEvidence(fileName, fileHash, ipfsCID, description)
 const registerEvidence = async (fileHash, ipfsCID, fileName, description) => {
   try {
     const contract = getContract();
     const tx = await contract.storeEvidence(
-      fileName,    // _fileName  (first param in ABI)
-      fileHash,    // _fileHash  (second param in ABI)
-      ipfsCID,     // _ipfsCID   (third param in ABI)
-      description  // _description (fourth param in ABI)
+      fileName,
+      fileHash,
+      ipfsCID,
+      description
     );
     const receipt = await tx.wait();
     return receipt.hash;
@@ -31,30 +30,72 @@ const registerEvidence = async (fileHash, ipfsCID, fileName, description) => {
   }
 };
 
-// Matches ABI: verifyEvidence(_fileHash) returns bool
+const castVote = async (fileHash, authorityId, approve, reason) => {
+  try {
+    const contract = getContract();
+    const tx = await contract.castVote(fileHash, authorityId, approve, reason || "");
+    const receipt = await tx.wait();
+    return receipt.hash;
+  } catch (error) {
+    console.error('castVote error:', error);
+    throw error;
+  }
+}
+
+const getVotingStatus = async (fileHash) => {
+  try {
+    const contract = getContract();
+    const result = await contract.getVotingStatus(fileHash);
+    
+    // Convert Enum to string
+    const statusMap = ["Submitted", "UnderReview", "Verified", "Rejected"];
+    const statusIdx = Number(result.status);
+    
+    return {
+      approvalCount: Number(result.approvalCount),
+      rejectionCount: Number(result.rejectionCount),
+      status: statusMap[statusIdx],
+      rejectionReason: result.rejectionReason,
+      approvedBy: [...result.approvedBy],
+      rejectedBy: [...result.rejectedBy]
+    };
+  } catch (error) {
+    console.error('getVotingStatus error:', error);
+    throw error;
+  }
+}
+
+const getAllPendingEvidence = async () => {
+  try {
+    const contract = getContract();
+    const result = await contract.getAllPendingEvidence();
+    return [...result]; // array of string hashes
+  } catch (error) {
+    console.error('getAllPendingEvidence error:', error);
+    throw error;
+  }
+}
+
 const verifyEvidence = async (fileHash) => {
   try {
     const contract = getContract();
-    // verifyEvidence is nonpayable (not view) in the ABI - need to call statically
-    const exists = await contract.verifyEvidence.staticCall(fileHash);
-    return exists;
+    await contract.getEvidence(fileHash);
+    return true; // Exists on blockchain
   } catch (error) {
-    console.error('verifyEvidence error:', error);
     return false;
   }
 };
 
-// Matches ABI: getEvidence(_fileHash) returns (fileName, ipfsCID, uploadedBy, timestamp, description)
 const getEvidence = async (fileHash) => {
   try {
     const contract = getContract();
     const result = await contract.getEvidence(fileHash);
     return {
-      fileName:    result[0],  // index 0 = fileName
-      ipfsCID:     result[1],  // index 1 = ipfsCID
-      uploadedBy:  result[2],  // index 2 = uploadedBy (address)
-      timestamp:   result[3],  // index 3 = timestamp
-      description: result[4],  // index 4 = description
+      fileName:    result[0],
+      ipfsCID:     result[1],
+      uploadedBy:  result[2],
+      timestamp:   result[3],  
+      description: result[4],
     };
   } catch (error) {
     console.error('getEvidence error:', error);
@@ -62,4 +103,4 @@ const getEvidence = async (fileHash) => {
   }
 };
 
-module.exports = { registerEvidence, verifyEvidence, getEvidence };
+module.exports = { registerEvidence, verifyEvidence, getEvidence, castVote, getVotingStatus, getAllPendingEvidence };

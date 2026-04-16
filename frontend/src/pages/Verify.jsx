@@ -3,25 +3,39 @@ import { useDropzone } from "react-dropzone";
 import axios from "axios";
 import { toast } from "react-toastify";
 
-const BACKEND_URL = "https://amiable-expression-production.up.railway.app";
+const BACKEND_URL = "http://localhost:5000"; // Will be overridden in prod if needed, assuming this holds
 
 const Verify = () => {
   const [file, setFile] = useState(null);
   const [hashInput, setHashInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  const [consensusStatus, setConsensusStatus] = useState(null);
   const [mode, setMode] = useState("file");
 
   const onDrop = useCallback((acceptedFiles) => {
     setFile(acceptedFiles[0]);
     setResult(null);
+    setConsensusStatus(null);
   }, []);
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, multiple: false });
 
+  const fetchConsensusStatus = async (hash) => {
+    try {
+      const res = await axios.get(`${BACKEND_URL}/api/verify/status/${hash}`);
+      if (res.data.success) {
+        setConsensusStatus(res.data.data);
+      }
+    } catch (e) {
+      console.warn("Could not fetch consensus status", e);
+    }
+  }
+
   const handleVerifyFile = async () => {
     if (!file) return toast.error("Please select a file!");
     setLoading(true);
+    setConsensusStatus(null);
     try {
       const formData = new FormData();
       formData.append("file", file);
@@ -29,6 +43,9 @@ const Verify = () => {
         headers: { "Content-Type": "multipart/form-data" },
       });
       setResult(response.data);
+      if (response.data.isValid && response.data.data.fileHash) {
+        await fetchConsensusStatus(response.data.data.fileHash);
+      }
     } catch (error) {
       toast.error(error.response?.data?.error || "Verification failed!");
     } finally {
@@ -37,11 +54,16 @@ const Verify = () => {
   };
 
   const handleVerifyHash = async () => {
-    if (!hashInput.trim()) return toast.error("Please enter a hash!");
+    const trimmedHash = hashInput.trim();
+    if (!trimmedHash) return toast.error("Please enter a hash!");
     setLoading(true);
+    setConsensusStatus(null);
     try {
-      const response = await axios.post(`${BACKEND_URL}/api/verify/hash`, { fileHash: hashInput.trim() });
+      const response = await axios.post(`${BACKEND_URL}/api/verify/hash`, { fileHash: trimmedHash });
       setResult(response.data);
+      if (response.data.isValid && response.data.data.fileHash) {
+        await fetchConsensusStatus(response.data.data.fileHash);
+      }
     } catch (error) {
       toast.error(error.response?.data?.error || "Verification failed!");
     } finally {
@@ -58,6 +80,22 @@ const Verify = () => {
     navigator.clipboard.writeText(result.data.fileHash);
     toast.success("Hash copied!");
   };
+
+  const getStatusBadge = () => {
+    if (!consensusStatus) return null;
+    const { status, approvalCount, rejectionCount, rejectionReason } = consensusStatus;
+    switch(status) {
+      case "Submitted":
+        return <div className="inline-block px-3 py-1 rounded bg-slate-600 text-white font-bold text-sm">Status: Submitted</div>;
+      case "UnderReview":
+        return <div className="inline-block px-3 py-1 rounded bg-yellow-600/80 text-white font-bold text-sm">Status: Under Review ({approvalCount} approvals)</div>;
+      case "Verified":
+        return <div className="inline-block px-3 py-1 rounded bg-green-600 text-white font-bold text-sm">✅ Verified by Consensus</div>;
+      case "Rejected":
+        return <div className="inline-block px-3 py-1 rounded bg-red-600 text-white font-bold text-sm">❌ Rejected — {rejectionReason || "No reason"}</div>;
+      default: return null;
+    }
+  }
 
   return (
     <div className="min-h-screen py-12 px-6">
@@ -76,7 +114,7 @@ const Verify = () => {
         {/* Tab toggle */}
         <div className="glass rounded-2xl p-2 flex gap-2 mb-6">
           <button
-            onClick={() => { setMode("file"); setResult(null); }}
+            onClick={() => { setMode("file"); setResult(null); setConsensusStatus(null); }}
             className={`flex-1 py-3 rounded-xl font-medium transition-all duration-200 ${
               mode === "file" ? "bg-indigo-600 text-white" : "text-slate-400 hover:text-white"
             }`}
@@ -84,7 +122,7 @@ const Verify = () => {
             Verify by File
           </button>
           <button
-            onClick={() => { setMode("hash"); setResult(null); }}
+            onClick={() => { setMode("hash"); setResult(null); setConsensusStatus(null); }}
             className={`flex-1 py-3 rounded-xl font-medium transition-all duration-200 ${
               mode === "hash" ? "bg-indigo-600 text-white" : "text-slate-400 hover:text-white"
             }`}
@@ -156,9 +194,12 @@ const Verify = () => {
         {/* Result */}
         {result && (
           <div className={`glass rounded-2xl p-6 fade-in-up border ${result.isValid ? "border-green-500/30" : "border-red-500/30"}`}>
-            <h3 className={`font-bold text-xl mb-4 ${result.isValid ? "text-green-400" : "text-red-400"}`}>
-              {result.message}
-            </h3>
+            <div className="flex flex-col gap-2 mb-4">
+              <h3 className={`font-bold text-xl ${result.isValid ? "text-green-400" : "text-red-400"}`}>
+                {result.message}
+              </h3>
+              {result.isValid && getStatusBadge()}
+            </div>
 
             {result.isValid && result.data && (
               <div className="space-y-3">
@@ -174,6 +215,28 @@ const Verify = () => {
                     <p className="text-white text-sm font-mono break-all">{item.value}</p>
                   </div>
                 ))}
+
+                {/* Consensus List */}
+                {consensusStatus && consensusStatus.approvedBy?.length > 0 && (
+                  <div className="bg-slate-800/50 rounded-xl p-3 mt-4">
+                    <p className="text-slate-400 text-xs mb-2">Approving Authorities</p>
+                    <div className="flex flex-col gap-1">
+                      {consensusStatus.approvedBy.map(addr => (
+                         <span key={addr} className="text-green-400 text-xs font-mono">{addr}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {consensusStatus && consensusStatus.rejectedBy?.length > 0 && (
+                  <div className="bg-slate-800/50 rounded-xl p-3 mt-4">
+                    <p className="text-slate-400 text-xs mb-2">Rejecting Authorities</p>
+                    <div className="flex flex-col gap-1">
+                      {consensusStatus.rejectedBy.map(addr => (
+                         <span key={addr} className="text-red-400 text-xs font-mono">{addr} - {consensusStatus.rejectionReason}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* File Hash with copy */}
                 <div className="bg-slate-800/50 rounded-xl p-3">
@@ -215,7 +278,7 @@ const Verify = () => {
               <div className="bg-red-900/20 rounded-xl p-4 mt-2">
                 <p className="text-slate-300 text-sm">This file was never uploaded or has been modified after upload.</p>
                 <p className="text-slate-400 text-xs mt-2">
-                  Hash checked: <span className="font-mono text-red-400">{result.data?.fileHash}</span>
+                  Hash checked: <span className="font-mono text-red-400">{result.data?.fileHash || hashInput}</span>
                 </p>
               </div>
             )}

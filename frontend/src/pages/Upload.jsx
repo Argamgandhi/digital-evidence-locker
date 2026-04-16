@@ -3,13 +3,18 @@ import { useDropzone } from "react-dropzone";
 import axios from "axios";
 import { toast } from "react-toastify";
 
-const BACKEND_URL = "https://amiable-expression-production.up.railway.app";
+const BACKEND_URL = "http://localhost:5000";
 
 const Upload = () => {
   const [file, setFile] = useState(null);
   const [description, setDescription] = useState("");
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
+  
+  const user = JSON.parse(localStorage.getItem("user") || "null");
+  if (user && user.userType === "verification_authority") {
+    window.location.href = "/profile";
+  }
 
   const onDrop = useCallback((acceptedFiles) => {
     setFile(acceptedFiles[0]);
@@ -44,7 +49,11 @@ const Upload = () => {
         toast.error(response.data.error || "Upload failed");
       }
     } catch (error) {
-      const errMsg = error.response?.data?.error || error.message || "Upload failed";
+      let errMsg = error.response?.data?.error || error.message || "Upload failed";
+      // Gracefully catch Solidity EVM Custom Errors that bubble up as huge logs
+      if (errMsg.includes("AlreadyExists") || errMsg.includes("execution reverted")) {
+        errMsg = "This file has already been uploaded to the blockchain!";
+      }
       toast.error(errMsg);
     } finally {
       setLoading(false);
@@ -149,9 +158,9 @@ const Upload = () => {
             <div className="text-center mb-6">
               <div className="text-5xl mb-3">✅</div>
               <h2 className="text-2xl font-bold text-green-400">Evidence Stored!</h2>
-              <p className="text-slate-400 text-sm mt-1">
-                Your file has been permanently recorded on the Ethereum blockchain
-              </p>
+              <div className="inline-block mt-2 bg-slate-700 text-slate-300 px-3 py-1 rounded-full text-xs font-semibold">
+                Status: Submitted — Awaiting Authority Review
+              </div>
             </div>
 
             <div className="space-y-3">
@@ -201,16 +210,27 @@ const Upload = () => {
               {result.ipfsCID && (
                 <div className="bg-slate-800/50 rounded-xl p-3">
                   <p className="text-slate-400 text-xs mb-1">IPFS CID</p>
-                  <p className="text-slate-300 text-sm font-mono break-all">{result.ipfsCID}</p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-slate-300 text-sm font-mono break-all flex-1">{result.ipfsCID}</p>
+                    <button
+                      onClick={() => copyToClipboard(result.ipfsCID)}
+                      className="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded text-xs flex-shrink-0"
+                    >
+                      📋 Copy
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
 
             {/* Info box */}
             <div className="mt-4 bg-indigo-900/20 border border-indigo-500/20 rounded-xl p-4">
-              <p className="text-indigo-300 text-sm font-semibold mb-1">🔑 Save your File Hash!</p>
-              <p className="text-slate-400 text-xs">
-                Share this hash with anyone who needs to verify or download this file. They can go to the Verify page and paste this hash to confirm authenticity and download the original file.
+              <p className="text-indigo-300 text-sm font-semibold mb-1">🔑 Verification Consensus Process</p>
+              <p className="text-slate-400 text-xs mt-1">
+                Your evidence has been submitted to the blockchain. It will be reviewed by authorities for consensus-based verification.
+              </p>
+              <p className="text-slate-400 text-xs mt-2">
+                Share this hash with anyone who needs to verify or download this file.
               </p>
             </div>
 

@@ -8,6 +8,7 @@ import UserType from "./pages/UserType";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Profile from "./pages/Profile";
+import ConsensusPanel from "./pages/ConsensusPanel";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 
@@ -61,6 +62,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <><Navbar /><Profile /></>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/consensus"
+            element={
+              <ProtectedRoute>
+                <><Navbar /><ConsensusPanel /></>
               </ProtectedRoute>
             }
           />

@@ -3,7 +3,7 @@ const router = express.Router();
 const crypto = require('crypto');
 const multer = require('multer');
 const axios = require('axios');
-const { verifyEvidence, getEvidence } = require('../utils/blockchain');
+const { verifyEvidence, getEvidence, getVotingStatus } = require('../utils/blockchain');
 
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
@@ -89,14 +89,21 @@ router.get('/download/:fileHash', async (req, res) => {
     const evidence = await getEvidence(fileHash);
     const ipfsURL = `https://gateway.pinata.cloud/ipfs/${evidence.ipfsCID}`;
 
-    // Stream file from IPFS to user
-    const response = await axios.get(ipfsURL, { responseType: 'stream' });
-
-    res.setHeader('Content-Disposition', `attachment; filename="${evidence.fileName}"`);
-    res.setHeader('Content-Type', response.headers['content-type'] || 'application/octet-stream');
-    response.data.pipe(res);
+    // Redirect to IPFS gateway to avoid backend rate-limits from Pinata
+    res.redirect(ipfsURL);
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// GET /api/verify/status/:fileHash
+router.get('/status/:fileHash', async (req, res) => {
+  try {
+    const { fileHash } = req.params;
+    const statusData = await getVotingStatus(fileHash);
+    res.json({ success: true, data: statusData });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
   }
 });
 

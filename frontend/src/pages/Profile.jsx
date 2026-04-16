@@ -29,12 +29,14 @@ const Profile = () => {
 
   const calculateEVT = useCallback(() => {
     if (isVerificationAuthority) {
-      setEvtBalance("100"); // Base granted amount for authorities (they earn via consensus in future)
+      // Authorities start at 0 EVT and securely earn +10 EVT for every finalized piece of evidence
+      const finalizedCount = allUploads.filter(u => u.status === "Verified" || u.status === "Rejected").length;
+      setEvtBalance((finalizedCount * 10).toString());
     } else {
       const deduction = uploads.length * 10;
       setEvtBalance((100 - deduction).toString());
     }
-  }, [uploads, isVerificationAuthority]);
+  }, [uploads, allUploads, isVerificationAuthority]);
 
   const fetchMyUploads = useCallback(async () => {
     try {

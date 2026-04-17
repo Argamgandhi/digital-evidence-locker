@@ -98,7 +98,7 @@ router.get('/pending', authAuthority, async (req, res) => {
       }]
     });
 
-    const TIME_LIMIT_MS = 5 * 60 * 1000; // 10 minutes deadnode timeout
+    const TIME_LIMIT_MS = 5 * 60 * 1000; // 5 minutes deadnode timeout
     const currentMs = Date.now();
     const finalDb = [];
 

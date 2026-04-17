@@ -53,7 +53,11 @@ const ConsensusPanel = () => {
         fetchPending();
       }
     } catch (e) {
-      toast.error(e.response?.data?.error || "Error recording vote");
+      let errMsg = e.response?.data?.error || "Error recording vote";
+      if (errMsg.includes("execution reverted") || errMsg.includes("AlreadyVoted")) {
+        errMsg = "You have already casted your vote for this evidence.";
+      }
+      toast.error(errMsg);
     }
   };
 

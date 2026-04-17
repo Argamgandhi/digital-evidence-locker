@@ -13,13 +13,6 @@ const UserType = () => {
       desc: "Government bodies, legal firms, law enforcement agencies",
       color: "from-blue-600 to-blue-800",
     },
-    {
-      id: "professional",
-      icon: "💼",
-      label: "Professional",
-      desc: "Lawyers, investigators, forensic experts, researchers",
-      color: "from-indigo-600 to-indigo-800",
-    },
 
     {
       id: "verification_authority",

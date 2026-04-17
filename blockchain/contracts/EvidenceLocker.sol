@@ -15,8 +15,8 @@ contract EvidenceLocker is AccessControl {
 
     IEvidenceToken public evidenceToken;
 
-    uint256 public requiredApprovals = 2;
-    uint256 public requiredRejections = 1;
+    // Dynamic Byzantine Fault Tolerance variables handled centrally via Node
+    // requiredApprovals / requiredRejections removed to allow strictly time-bounded voting.
 
     enum EvidenceStatus { Submitted, UnderReview, Verified, Rejected }
 
@@ -64,13 +64,8 @@ contract EvidenceLocker is AccessControl {
         evidenceToken = IEvidenceToken(_evidenceTokenAddress);
     }
 
-    /// @dev Admin can set required vote counts
-    function setConsensusThreshold(uint256 _approvals, uint256 _rejections) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (_approvals == 0 || _rejections == 0) revert InvalidConsensusThreshold();
-        requiredApprovals = _approvals;
-        requiredRejections = _rejections;
-        emit ConsensusThresholdUpdated(_approvals, _rejections);
-    }
+    // Deprecated static thresholds
+    // function setConsensusThreshold(...)
 
     function grantAuthorityRole(address account) external onlyRole(DEFAULT_ADMIN_ROLE) {
         grantRole(AUTHORITY_ROLE, account);
@@ -145,16 +140,24 @@ contract EvidenceLocker is AccessControl {
         e.lastUpdated = uint128(block.timestamp);
         emit VoteCast(_fileHash, msg.sender, _approve, block.timestamp);
 
-        // Check consensus thresholds
-        if (e.approvalCount >= requiredApprovals && e.status != EvidenceStatus.Verified) {
+        // Consensus bounds checking moved to backend for timer evaluations
+        if (e.status == EvidenceStatus.Submitted) {
+            e.status = EvidenceStatus.UnderReview;
+        }
+    }
+
+    /// @dev Master backend node evaluates final BFT vote thresholds and concludes the consensus mathematically
+    function finalizeConsensus(string memory _fileHash, bool _finalVerdict) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        bytes32 hashKey = keccak256(bytes(_fileHash));
+        if (!evidenceStore[hashKey].exists) revert EvidenceNotFound(_fileHash);
+        
+        Evidence storage e = evidenceStore[hashKey];
+        if (_finalVerdict) {
             e.status = EvidenceStatus.Verified;
             emit EvidenceVerified(_fileHash, e.approvalCount, block.timestamp);
-            // The backend is responsible for rewarding authorities upon seeing this state or event.
-        } else if (e.rejectionCount >= requiredRejections && e.status != EvidenceStatus.Rejected) {
+        } else {
             e.status = EvidenceStatus.Rejected;
-            emit EvidenceRejected(_fileHash, e.rejectionCount, _reason, block.timestamp);
-        } else if (e.status == EvidenceStatus.Submitted) {
-            e.status = EvidenceStatus.UnderReview;
+            emit EvidenceRejected(_fileHash, e.rejectionCount, "Time limit passed / BFT rejected", block.timestamp);
         }
     }
 

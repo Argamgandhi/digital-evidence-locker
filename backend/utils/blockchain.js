@@ -103,4 +103,16 @@ const getEvidence = async (fileHash) => {
   }
 };
 
-module.exports = { registerEvidence, verifyEvidence, getEvidence, castVote, getVotingStatus, getAllPendingEvidence };
+const finalizeConsensus = async (fileHash, finalVerdict) => {
+  try {
+    const contract = getContract();
+    const tx = await contract.finalizeConsensus(fileHash, finalVerdict);
+    await tx.wait();
+    return true;
+  } catch (error) {
+    console.error('finalizeConsensus error:', error);
+    throw error;
+  }
+};
+
+module.exports = { registerEvidence, verifyEvidence, getEvidence, castVote, getVotingStatus, getAllPendingEvidence, finalizeConsensus };

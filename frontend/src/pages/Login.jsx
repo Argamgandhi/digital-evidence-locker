@@ -15,12 +15,10 @@ const Login = () => {
 
   const userTypeLabels = {
     organization: { label: "Organisation", icon: "🏛️", color: "text-blue-400" },
-    professional: { label: "Professional", icon: "💼", color: "text-indigo-400" },
-    personal: { label: "Personal", icon: "👤", color: "text-purple-400" },
     verification_authority: { label: "Verification Authority", icon: "🔏", color: "text-rose-400" },
   };
 
-  const current = userTypeLabels[userType] || userTypeLabels.professional;
+  const current = userTypeLabels[userType] || userTypeLabels.organization;
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
